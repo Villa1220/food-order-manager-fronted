@@ -1,0 +1,34 @@
+---
+description: Contexto del proyecto La Ruta del Sabor — stack, estructura y prioridades
+alwaysApply: true
+---
+
+# La Ruta del Sabor — Frontend
+
+App Next.js del restaurante **La Ruta del Sabor** (Quito–Perucho). Idioma UI: español (es_EC).
+
+## Stack
+
+- Next.js 16 App Router + Turbopack + TypeScript
+- Tailwind CSS v4 (tokens en `src/app/globals.css`)
+- Motion, React Hook Form + Zod, TanStack Query, Socket.IO client, Lucide
+
+## Estructura
+
+```
+src/app/           → rutas App Router
+src/components/ui/ → primitivos (shadcn + propios)
+src/components/layout/ → Header, Footer, WhatsApp
+src/features/      → dominio: menu, home, (auth, orders, payments…)
+src/lib/           → utils, contact, clientes API
+public/platos|instalaciones → imágenes reales
+```
+
+`features/` espeja `modules/` del backend. Coloca lógica de dominio en features, no en `app/`.
+
+## Prioridades
+
+1. Mantener identidad de marca (paleta gold/brand, Playfair Display + Lato).
+2. Mobile-first; pedidos vía WhatsApp (`CONTACT` en `src/lib/contact.ts`).
+3. Preferir Server Components; `"use client"` solo si hay estado/efectos/browser APIs.
+4. No inventar platos/precios: usar `src/features/menu/data.ts`.
