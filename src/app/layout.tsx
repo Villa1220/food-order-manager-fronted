@@ -43,9 +43,8 @@ export const viewport: Viewport = {
 const THEME_INIT_SCRIPT = `
 (function () {
   try {
-    var stored = localStorage.getItem("theme");
-    var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    if (theme === "dark") document.documentElement.classList.add("dark");
+    document.documentElement.classList.remove("dark");
+    localStorage.setItem("theme", "light");
   } catch (e) {}
 })();
 `;
