@@ -1,0 +1,16 @@
+---
+description: Convenciones TypeScript y React para este frontend
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# TypeScript & React
+
+- Path alias `@/` → `src/`
+- Componentes funcionales; props tipadas; evitar `any`
+- Clases: `cn()` de `@/lib/utils` + CVA cuando hay variantes
+- Formularios: React Hook Form + Zod
+- Datos remotos: TanStack Query; realtime: Socket.IO client
+- Validar env con `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_SOCKET_URL`
+- Accesibilidad: labels, focus rings (`focus-visible:ring-*`), contraste en light/dark
+- No añadir `useMemo`/`useCallback` por defecto salvo patrón existente o necesidad clara

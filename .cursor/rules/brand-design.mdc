@@ -1,0 +1,33 @@
+---
+description: Identidad visual La Ruta del Sabor — colores, tipografía y patrones UI
+globs: src/**/*.{tsx,css}
+alwaysApply: false
+---
+
+# Brand & UI
+
+## Colores
+
+- Acento principal (brasa): `brand-500` `#F25C05` (CTAs `brand-600` `#D14A04`)
+- Acento secundario (dorado): `gold-400` `#F2B807` — solo precios, badges, detalles
+- El rojo puro `#F21B07` NO se usa en UI (solo vive en el logo)
+- Light: fondo crema `#FAF6EF`, texto espresso `#2A211B`
+- Dark: fondo tinta `#0F0C09`, texto crema `#F5EEE0`
+- Hero, menú y Visítanos siguen el tema (`bg-background` / `bg-surface`)
+- `bg-ink` + `text-cream` solo si se necesita un bloque oscuro fijo intencional
+- **Prohibido**: gradientes, blanco/negro puros de fondo, más de 2 tonos de acento
+
+Usar tokens semánticos: `bg-background`, `bg-surface`, `text-foreground`, `text-foreground-muted`, `border-border-subtle`, `bg-ink`, `text-cream`.
+
+## Tipografía
+
+- Display / títulos: `font-display` (Playfair Display)
+- Cuerpo: `font-sans` (Lato)
+
+## Patrones
+
+- CTAs: `ButtonLink` / `buttonVariants` (`primary`, `accent`, `outline`, `ghost`) — `rounded-full`
+- Contacto/WhatsApp: siempre desde `@/lib/contact` (`CONTACT`)
+- Imágenes: `next/image`; platos en `/public/platos`, instalaciones en `/public/instalaciones`
+- Evitar paletas purple/indigo genéricas o cream+terracotta ajenas a la marca
+- Un propósito por sección; hero limpio (marca, headline, CTA, imagen)

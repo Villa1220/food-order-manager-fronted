@@ -1,0 +1,14 @@
+---
+description: Manejo correcto de assets y contexto del Figma MCP
+alwaysApply: true
+---
+
+# Figma MCP
+
+Cuando uses el servidor Figma MCP:
+
+- Si devuelve una fuente `localhost` para imagen o SVG, úsala directo en el código (no la rehostees ni inventes placeholder).
+- No instales packs de iconos nuevos si los iconos ya vienen en el payload de Figma.
+- No crees placeholders cuando exista asset del MCP.
+- Adapta el resultado a la marca La Ruta del Sabor (`brand-*`, `gold-*`, Playfair Display/Lato) salvo que el usuario pida pixel-perfect del archivo.
+- Links de Figma: el agente extrae `node-id`; no necesita “abrir” la URL en el browser.

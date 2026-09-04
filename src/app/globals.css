@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+/* Modo oscuro activado por clase .dark en <html> (ver ThemeToggle) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Identidad "La Ruta del Sabor" — paleta refinada (sin degradados).
+
+  Principios (investigación: Dishoom, Eleven Madison Park, BRUNO Tbilisi):
+  - Neutros cálidos: crema papel en claro, negro tinta cálido en oscuro.
+    Nunca blanco #fff ni negro #000 puros como fondo.
+  - UN acento dominante: naranja brasa (#F25C05 del logo). El dorado
+    (#F2B807) es acento secundario para precios y detalles.
+  - El rojo puro del logo (#F21B07) queda solo en el logo; en la UI
+    los tonos profundos del ramp brand son marrones-brasa cálidos.
+  - Colores planos siempre: cero gradientes.
+*/
+@theme {
+  /* Dorado del logo (acento secundario: precios, badges, detalles) */
+  --color-gold-50: #fdf9eb;
+  --color-gold-100: #faf0c8;
+  --color-gold-200: #f7e18d;
+  --color-gold-300: #f2cb07;
+  --color-gold-400: #f2b807;
+  --color-gold-500: #d69f04;
+  --color-gold-600: #b28303;
+  --color-gold-700: #8a6402;
+  --color-gold-800: #5f4502;
+  --color-gold-900: #3d2c01;
+
+  /* Brasa (acento principal): naranja del logo, profundos cálidos */
+  --color-brand-50: #fdf3ec;
+  --color-brand-100: #fbe2d0;
+  --color-brand-200: #f7c29c;
+  --color-brand-300: #f5a35f;
+  --color-brand-400: #f28907;
+  --color-brand-500: #f25c05;
+  --color-brand-600: #d14a04;
+  --color-brand-700: #a83c06;
+  --color-brand-800: #7c2d06;
+  --color-brand-900: #4d1d05;
+  --color-brand-950: #2b1003;
+
+  /* Tinta cálida: secciones oscuras fijas (hero, menú, ubicación) */
+  --color-ink: #14100b;
+  --color-ink-soft: #201913;
+
+  /* Crema papel: texto sobre tinta */
+  --color-cream: #f5eee0;
+
+  --font-display: "var(--font-playfair)", ui-serif, Georgia, serif;
+  --font-sans: "var(--font-lato)", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Tokens semánticos: mismos nombres de clase, distinto valor por tema */
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-border-subtle: var(--border-subtle);
+}
+
+/* Paleta clara: crema papel + espresso */
+:root {
+  --background: #faf6ef;
+  --surface: #fffdf9;
+  --foreground: #2a211b;
+  --foreground-muted: rgb(42 33 27 / 68%);
+  --border-subtle: rgb(42 33 27 / 12%);
+}
+
+/* Paleta oscura: tinta cálida + crema */
+.dark {
+  --background: #0f0c09;
+  --surface: #1a1510;
+  --foreground: #f5eee0;
+  --foreground-muted: rgb(245 238 224 / 66%);
+  --border-subtle: rgb(245 238 224 / 13%);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
