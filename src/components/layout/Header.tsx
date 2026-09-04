@@ -4,17 +4,20 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
+import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { ButtonLink } from "@/components/ui/Button";
 import { CONTACT } from "@/lib/contact";
-
-const NAV_LINKS = [
-  { href: "#menu", label: "Menú" },
-  { href: "#nosotros", label: "Nosotros" },
-  { href: "#ubicacion", label: "Ubicación" },
-];
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export function Header() {
   const [open, setOpen] = useState(false);
+  const { t } = useLanguage();
+
+  const navLinks = [
+    { href: "#menu", label: t.nav.menu },
+    { href: "#nosotros", label: t.nav.about },
+    { href: "#ubicacion", label: t.nav.location },
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-border-subtle bg-background/90 backdrop-blur">
@@ -32,7 +35,7 @@ export function Header() {
         </a>
 
         <div className="hidden gap-8 text-sm font-medium text-foreground/80 md:flex">
-          {NAV_LINKS.map((link) => (
+          {navLinks.map((link) => (
             <a key={link.href} href={link.href} className="transition hover:text-brand-500">
               {link.label}
             </a>
@@ -41,6 +44,7 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
+          <LanguageToggle />
           <ButtonLink
             href={CONTACT.whatsappUrl}
             target="_blank"
@@ -48,12 +52,12 @@ export function Header() {
             size="sm"
             className="hidden sm:inline-flex"
           >
-            Hacer un pedido
+            {t.nav.order}
           </ButtonLink>
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            aria-label={open ? "Cerrar menú" : "Abrir menú"}
+            aria-label={open ? t.nav.closeMenu : t.nav.openMenu}
             aria-expanded={open}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border-subtle bg-surface text-foreground transition hover:border-gold-400 hover:text-gold-500 md:hidden"
           >
@@ -72,7 +76,7 @@ export function Header() {
             className="overflow-hidden border-t border-border-subtle bg-background md:hidden"
           >
             <div className="flex flex-col gap-1 px-6 py-4">
-              {NAV_LINKS.map((link) => (
+              {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
@@ -90,7 +94,7 @@ export function Header() {
                 size="sm"
                 className="mt-2 justify-center sm:hidden"
               >
-                Hacer un pedido
+                {t.nav.order}
               </ButtonLink>
             </div>
           </motion.div>
