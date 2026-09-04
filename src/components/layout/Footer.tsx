@@ -1,13 +1,18 @@
+"use client";
+
 import { MapPin, Phone, Clock, Facebook, Instagram } from "lucide-react";
 import { CONTACT } from "@/lib/contact";
-
-const NAV_LINKS = [
-  { href: "#menu", label: "Menú" },
-  { href: "#nosotros", label: "Nosotros" },
-  { href: "#ubicacion", label: "Ubicación" },
-];
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export function Footer() {
+  const { t } = useLanguage();
+
+  const navLinks = [
+    { href: "#menu", label: t.nav.menu },
+    { href: "#nosotros", label: t.nav.about },
+    { href: "#ubicacion", label: t.nav.location },
+  ];
+
   return (
     <footer className="border-t border-border-subtle bg-background">
       <div className="mx-auto grid max-w-6xl gap-10 px-6 py-14 sm:grid-cols-3">
@@ -23,16 +28,13 @@ export function Footer() {
               La Ruta del Sabor
             </span>
           </div>
-          <p className="max-w-xs text-sm text-foreground-muted">
-            Comida ecuatoriana tradicional: cuy, parrilladas, caldos y mucho
-            sabor, listos para pedir en línea.
-          </p>
+          <p className="max-w-xs text-sm text-foreground-muted">{t.footer.blurb}</p>
           <div className="flex items-center gap-3">
             <a
               href={CONTACT.facebookUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Síguenos en Facebook"
+              aria-label={t.visit.followFacebook}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle text-foreground/70 transition hover:border-brand-500 hover:text-brand-600"
             >
               <Facebook className="h-4 w-4" aria-hidden="true" />
@@ -41,7 +43,7 @@ export function Footer() {
               href={CONTACT.instagramUrl}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label="Síguenos en Instagram"
+              aria-label={t.visit.followInstagram}
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle text-foreground/70 transition hover:border-brand-500 hover:text-brand-600"
             >
               <Instagram className="h-4 w-4" aria-hidden="true" />
@@ -51,10 +53,10 @@ export function Footer() {
 
         <div>
           <p className="mb-3 text-sm font-bold uppercase tracking-wide text-foreground">
-            Explorar
+            {t.footer.explore}
           </p>
           <ul className="flex flex-col gap-2 text-sm text-foreground-muted">
-            {NAV_LINKS.map((link) => (
+            {navLinks.map((link) => (
               <li key={link.href}>
                 <a href={link.href} className="transition hover:text-brand-500">
                   {link.label}
@@ -66,7 +68,7 @@ export function Footer() {
 
         <div>
           <p className="mb-3 text-sm font-bold uppercase tracking-wide text-foreground">
-            Contacto
+            {t.footer.contact}
           </p>
           <ul className="flex flex-col gap-2 text-sm text-foreground-muted">
             <li className="flex items-start gap-2">
@@ -92,8 +94,8 @@ export function Footer() {
             <li className="flex items-start gap-2">
               <Clock className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" aria-hidden="true" />
               <div>
-                <p>{CONTACT.hoursLabel}</p>
-                {CONTACT.hoursLines.map((line) => (
+                <p>{t.visit.hoursLabel}</p>
+                {t.visit.hoursLines.map((line) => (
                   <p key={line}>{line}</p>
                 ))}
               </div>
@@ -103,8 +105,7 @@ export function Footer() {
       </div>
 
       <div className="border-t border-border-subtle py-6 text-center text-sm text-foreground-muted">
-        © {new Date().getFullYear()} La Ruta del Sabor. Todos los derechos
-        reservados.
+        © {new Date().getFullYear()} La Ruta del Sabor. {t.footer.rights}
       </div>
     </footer>
   );

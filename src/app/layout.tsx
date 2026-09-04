@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Lato } from "next/font/google";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -19,7 +20,7 @@ const lato = Lato({
 export const metadata: Metadata = {
   title: "La Ruta del Sabor",
   description:
-    "La Ruta del Sabor: cuy, parrilladas, caldos y más, con sabor de siempre. Pide en línea y sigue tu pedido en tiempo real.",
+    "La Ruta del Sabor: comida típica ecuatoriana — cuy, parrilladas, caldos y más. Pide en línea y sigue tu pedido en tiempo real.",
   icons: {
     icon: "/favicon.svg",
     apple: "/favicon.svg",
@@ -27,7 +28,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "La Ruta del Sabor",
     description:
-      "Comida ecuatoriana tradicional: cuy, parrilladas, caldos y mucho sabor. Pide en línea.",
+      "Comida típica ecuatoriana: cuy, parrilladas, caldos y mucho sabor. Pide en línea.",
     locale: "es_EC",
     type: "website",
   },
@@ -62,7 +63,7 @@ export default function RootLayout({
       <body
         className={`${playfair.variable} ${lato.variable} antialiased bg-background text-foreground`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

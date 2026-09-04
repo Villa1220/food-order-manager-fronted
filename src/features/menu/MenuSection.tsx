@@ -20,13 +20,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MENU_CATEGORIES, MENU_ITEMS, type MenuCategoryId } from "./data";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { MENU_ITEM_I18N } from "@/lib/i18n/menu-i18n";
 
 type FilterId = "todos" | MenuCategoryId;
-
-const FILTERS: { id: FilterId; label: string }[] = [
-  { id: "todos", label: "Todos" },
-  ...MENU_CATEGORIES,
-];
 
 const CATEGORY_ICONS: Record<FilterId, LucideIcon> = {
   todos: UtensilsCrossed,
@@ -37,15 +34,40 @@ const CATEGORY_ICONS: Record<FilterId, LucideIcon> = {
 };
 
 export function MenuSection() {
+  const { locale, t } = useLanguage();
   const [active, setActive] = useState<FilterId>("todos");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const filters: { id: FilterId; label: string }[] = useMemo(
+    () => [
+      { id: "todos", label: t.menu.all },
+      ...MENU_CATEGORIES.map((cat) => ({
+        id: cat.id,
+        label: t.menu.categories[cat.id] ?? cat.label,
+      })),
+    ],
+    [t],
+  );
+
+  const localizedItems = useMemo(
+    () =>
+      MENU_ITEMS.map((item) => {
+        const i18n = MENU_ITEM_I18N[item.id]?.[locale];
+        return {
+          ...item,
+          name: i18n?.name ?? item.name,
+          description: i18n?.description ?? item.description,
+        };
+      }),
+    [locale],
+  );
 
   const items = useMemo(
     () =>
       active === "todos"
-        ? MENU_ITEMS
-        : MENU_ITEMS.filter((item) => item.category === active),
-    [active],
+        ? localizedItems
+        : localizedItems.filter((item) => item.category === active),
+    [active, localizedItems],
   );
 
   const itemsWithImage = useMemo(
@@ -67,9 +89,7 @@ export function MenuSection() {
               {item.price}
             </span>
             {item.description && (
-              <span className="text-sm text-cream/75">
-                {item.description}
-              </span>
+              <span className="text-sm text-cream/75">{item.description}</span>
             )}
           </div>
         ),
@@ -80,7 +100,7 @@ export function MenuSection() {
   return (
     <div>
       <div className="mb-10 flex flex-wrap gap-3">
-        {FILTERS.map((filter) => {
+        {filters.map((filter) => {
           const isActive = filter.id === active;
           const Icon = CATEGORY_ICONS[filter.id];
           return (
@@ -104,7 +124,7 @@ export function MenuSection() {
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={active}
+          key={`${active}-${locale}`}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
@@ -127,7 +147,7 @@ export function MenuSection() {
                 {item.featured && (
                   <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-gold-400 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-black shadow">
                     <Star className="h-3 w-3 fill-black" aria-hidden="true" />
-                    Especialidad
+                    {t.menu.specialty}
                   </span>
                 )}
 
@@ -135,7 +155,7 @@ export function MenuSection() {
                   <button
                     type="button"
                     onClick={() => setLightboxIndex(imageIndex)}
-                    aria-label={`Ampliar foto de ${item.name}`}
+                    aria-label={`${t.menu.enlarge}: ${item.name}`}
                     className="relative aspect-[4/3] w-full cursor-zoom-in overflow-hidden bg-background"
                   >
                     <Image
@@ -148,15 +168,13 @@ export function MenuSection() {
                     <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100">
                       <span className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-black shadow">
                         <Expand className="h-3.5 w-3.5" aria-hidden="true" />
-                        Ampliar
+                        {t.menu.enlarge}
                       </span>
                     </div>
                   </button>
                 )}
 
-                <div
-                  className={cn("flex flex-col gap-2", item.image && "p-6")}
-                >
+                <div className={cn("flex flex-col gap-2", item.image && "p-6")}>
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="font-sans text-lg font-bold leading-snug text-foreground">
                       {item.name}

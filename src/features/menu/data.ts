@@ -21,7 +21,7 @@ export interface MenuItem {
 
 export const MENU_CATEGORIES: MenuCategory[] = [
   { id: "platos-fuertes", label: "Platos fuertes" },
-  { id: "sopas-caldos", label: "Sopas / Caldos" },
+  { id: "sopas-caldos", label: "Sopas" },
   { id: "bebidas", label: "Bebidas" },
   { id: "postres", label: "Postres" },
 ];
