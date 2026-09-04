@@ -6,7 +6,7 @@ export const dictionaries: Record<"es" | "en", Dictionary> = {
       menu: "Menú",
       about: "Nosotros",
       location: "Ubicación",
-      order: "Hacer un pedido",
+      order: "Iniciar sesión",
       openMenu: "Abrir menú",
       closeMenu: "Cerrar menú",
     },
@@ -98,13 +98,28 @@ export const dictionaries: Record<"es" | "en", Dictionary> = {
       switchToEs: "Cambiar a español",
     },
     whatsappAria: "Pedir por WhatsApp",
+    login: {
+      title: "Iniciar sesión",
+      eyebrow: "Acceso del equipo",
+      subtitle:
+        "Entra con la cuenta de Google del restaurante. Usamos tu nombre y correo para abrirte el panel de admin o de mesero.",
+      continueWith: "Continuar con Google",
+      entering: "Entrando al panel…",
+      staffOnly: "Solo personal autorizado",
+      privacy: "No publicamos tu correo. La sesión queda en este dispositivo.",
+      photoAlt: "Terraza de La Ruta del Sabor",
+      photoCaption: "Perucho · Quito",
+      missingClient:
+        "Falta el ID de cliente de Google (NEXT_PUBLIC_GOOGLE_CLIENT_ID y GOOGLE_CLIENT_ID en el backend). En Google Cloud: APIs y servicios → Credenciales → ID de cliente OAuth (aplicación web), orígenes autorizados http://localhost:3000.",
+      backHome: "Volver al inicio",
+    },
   },
   en: {
     nav: {
       menu: "Menu",
       about: "About",
       location: "Location",
-      order: "Place an order",
+      order: "Log in",
       openMenu: "Open menu",
       closeMenu: "Close menu",
     },
@@ -197,5 +212,20 @@ export const dictionaries: Record<"es" | "en", Dictionary> = {
       switchToEs: "Switch to Spanish",
     },
     whatsappAria: "Order via WhatsApp",
+    login: {
+      title: "Log in",
+      eyebrow: "Staff access",
+      subtitle:
+        "Sign in with the restaurant Google account. We use your name and email to open the admin or waiter panel.",
+      continueWith: "Continue with Google",
+      entering: "Opening the panel…",
+      staffOnly: "Authorized staff only",
+      privacy: "We do not publish your email. The session stays on this device.",
+      photoAlt: "La Ruta del Sabor terrace",
+      photoCaption: "Perucho · Quito",
+      missingClient:
+        "Missing Google client ID (NEXT_PUBLIC_GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID on the backend). In Google Cloud: APIs & services → Credentials → OAuth client ID (web app), authorized origins http://localhost:3000.",
+      backHome: "Back to home",
+    },
   },
 };

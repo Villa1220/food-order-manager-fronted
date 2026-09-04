@@ -9,6 +9,19 @@ export type Dictionary = {
     openMenu: string;
     closeMenu: string;
   };
+  login: {
+    title: string;
+    eyebrow: string;
+    subtitle: string;
+    continueWith: string;
+    entering: string;
+    staffOnly: string;
+    privacy: string;
+    photoAlt: string;
+    photoCaption: string;
+    missingClient: string;
+    backHome: string;
+  };
   hero: {
     badge: string;
     subtitle: string;

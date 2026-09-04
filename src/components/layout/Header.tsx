@@ -6,24 +6,25 @@ import { Menu, X } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { ButtonLink } from "@/components/ui/Button";
-import { CONTACT } from "@/lib/contact";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { useSession } from "@/lib/useSession";
 import { trackEvent } from "@/lib/analytics";
 
 export function Header() {
   const [open, setOpen] = useState(false);
   const { t } = useLanguage();
+  const sessionUser = useSession();
 
   const navLinks = [
-    { href: "#menu", label: t.nav.menu },
-    { href: "#nosotros", label: t.nav.about },
-    { href: "#ubicacion", label: t.nav.location },
+    { href: "/#menu", label: t.nav.menu },
+    { href: "/#nosotros", label: t.nav.about },
+    { href: "/#ubicacion", label: t.nav.location },
   ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-border-subtle bg-background/90 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <a href="#top" className="flex items-center gap-2.5">
+        <a href="/" className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/logo.jpg"
@@ -47,14 +48,16 @@ export function Header() {
           <ThemeToggle />
           <LanguageToggle />
           <ButtonLink
-            href={CONTACT.whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={sessionUser ? "/panel" : "/login"}
             size="sm"
             className="hidden sm:inline-flex"
-            onClick={() => trackEvent("whatsapp_click", { place: "header" })}
+            onClick={() =>
+              trackEvent(sessionUser ? "panel_click" : "login_click", {
+                place: "header",
+              })
+            }
           >
-            {t.nav.order}
+            {sessionUser ? "Panel" : t.nav.order}
           </ButtonLink>
           <button
             type="button"
@@ -89,17 +92,17 @@ export function Header() {
                 </a>
               ))}
               <ButtonLink
-                href={CONTACT.whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={sessionUser ? "/panel" : "/login"}
                 onClick={() => {
                   setOpen(false);
-                  trackEvent("whatsapp_click", { place: "header_mobile" });
+                  trackEvent(sessionUser ? "panel_click" : "login_click", {
+                    place: "header_mobile",
+                  });
                 }}
                 size="sm"
                 className="mt-2 justify-center sm:hidden"
               >
-                {t.nav.order}
+                {sessionUser ? "Panel" : t.nav.order}
               </ButtonLink>
             </div>
           </motion.div>
