@@ -5,6 +5,7 @@ import { Flame } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { CONTACT } from "@/lib/contact";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { trackEvent } from "@/lib/analytics";
 
 export function HeroContent() {
   const { t } = useLanguage();
@@ -31,6 +32,7 @@ export function HeroContent() {
           target="_blank"
           rel="noopener noreferrer"
           variant="primary"
+          onClick={() => trackEvent("whatsapp_click", { place: "hero" })}
         >
           {t.hero.orderWhatsApp}
         </ButtonLink>

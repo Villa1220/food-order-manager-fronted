@@ -3,6 +3,7 @@
 import { MapPin, Phone, Clock, Facebook, Instagram } from "lucide-react";
 import { CONTACT } from "@/lib/contact";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { trackEvent } from "@/lib/analytics";
 
 export function Footer() {
   const { t } = useLanguage();
@@ -35,6 +36,9 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={t.visit.followFacebook}
+              onClick={() =>
+                trackEvent("social_click", { network: "facebook", place: "footer" })
+              }
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle text-foreground/70 transition hover:border-brand-500 hover:text-brand-600"
             >
               <Facebook className="h-4 w-4" aria-hidden="true" />
@@ -44,6 +48,9 @@ export function Footer() {
               target="_blank"
               rel="noopener noreferrer"
               aria-label={t.visit.followInstagram}
+              onClick={() =>
+                trackEvent("social_click", { network: "instagram", place: "footer" })
+              }
               className="flex h-9 w-9 items-center justify-center rounded-full border border-border-subtle text-foreground/70 transition hover:border-brand-500 hover:text-brand-600"
             >
               <Instagram className="h-4 w-4" aria-hidden="true" />
@@ -77,6 +84,7 @@ export function Footer() {
                 href={CONTACT.mapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackEvent("maps_click", { place: "footer" })}
                 className="transition hover:text-brand-500"
               >
                 {CONTACT.addressLabel}
@@ -86,6 +94,7 @@ export function Footer() {
               <Phone className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" aria-hidden="true" />
               <a
                 href={`tel:${CONTACT.phoneTel}`}
+                onClick={() => trackEvent("phone_click", { place: "footer" })}
                 className="transition hover:text-brand-500"
               >
                 {CONTACT.phoneDisplay}

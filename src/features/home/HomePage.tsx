@@ -23,6 +23,8 @@ import { MenuSection } from "@/features/menu/MenuSection";
 import { HeroContent } from "@/features/home/HeroContent";
 import { CONTACT } from "@/lib/contact";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { SectionViewTracker } from "@/components/analytics/SectionViewTracker";
+import { trackEvent } from "@/lib/analytics";
 
 const HERO_PHOTOS = [
   "/instalaciones/instalaciones1.jpg",
@@ -57,6 +59,7 @@ export function HomePage() {
   return (
     <div id="top">
       <Header />
+      <SectionViewTracker />
       <main>
         <section className="relative overflow-hidden bg-background text-foreground">
           <div className="relative mx-auto grid max-w-6xl gap-10 px-6 py-20 md:grid-cols-2 md:py-28">
@@ -151,6 +154,7 @@ export function HomePage() {
                     href={CONTACT.mapsUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={() => trackEvent("maps_click", { place: "visit" })}
                     className="mt-3 inline-flex items-center gap-2 rounded-full border border-brand-500 bg-brand-500/10 px-4 py-2 text-sm font-bold text-brand-600 transition hover:bg-brand-500 hover:text-white"
                   >
                     <Navigation className="h-4 w-4" aria-hidden="true" />
@@ -179,6 +183,7 @@ export function HomePage() {
                   <p className="font-semibold">{t.visit.contact}</p>
                   <a
                     href={`tel:${CONTACT.phoneTel}`}
+                    onClick={() => trackEvent("phone_click", { place: "visit" })}
                     className="text-foreground-muted transition hover:text-foreground"
                   >
                     {CONTACT.phoneDisplay}
@@ -197,6 +202,9 @@ export function HomePage() {
                     variant="primary"
                     size="sm"
                     className="mt-2"
+                    onClick={() =>
+                      trackEvent("whatsapp_click", { place: "visit" })
+                    }
                   >
                     {t.visit.writeWhatsApp}
                   </ButtonLink>
@@ -209,6 +217,9 @@ export function HomePage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={t.visit.followFacebook}
+                  onClick={() =>
+                    trackEvent("social_click", { network: "facebook", place: "visit" })
+                  }
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle text-foreground-muted transition hover:border-brand-500 hover:text-brand-600"
                 >
                   <Facebook className="h-5 w-5" aria-hidden="true" />
@@ -218,6 +229,9 @@ export function HomePage() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={t.visit.followInstagram}
+                  onClick={() =>
+                    trackEvent("social_click", { network: "instagram", place: "visit" })
+                  }
                   className="flex h-10 w-10 items-center justify-center rounded-full border border-border-subtle text-foreground-muted transition hover:border-brand-500 hover:text-brand-600"
                 >
                   <Instagram className="h-5 w-5" aria-hidden="true" />

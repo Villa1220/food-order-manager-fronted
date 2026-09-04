@@ -8,6 +8,7 @@ import { LanguageToggle } from "@/components/ui/LanguageToggle";
 import { ButtonLink } from "@/components/ui/Button";
 import { CONTACT } from "@/lib/contact";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { trackEvent } from "@/lib/analytics";
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -51,6 +52,7 @@ export function Header() {
             rel="noopener noreferrer"
             size="sm"
             className="hidden sm:inline-flex"
+            onClick={() => trackEvent("whatsapp_click", { place: "header" })}
           >
             {t.nav.order}
           </ButtonLink>
@@ -90,7 +92,10 @@ export function Header() {
                 href={CONTACT.whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  setOpen(false);
+                  trackEvent("whatsapp_click", { place: "header_mobile" });
+                }}
                 size="sm"
                 className="mt-2 justify-center sm:hidden"
               >
