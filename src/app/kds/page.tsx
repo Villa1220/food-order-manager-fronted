@@ -161,7 +161,11 @@ function KdsBoard() {
     socket.on("order:new", onOrder);
     socket.on("order:status", onOrder);
     socket.on("connect", () => void loadOrders()); // re-sincroniza tras reconexión
+    // En Vercel el socket no cruza hasta el HTTP del VPS. La pantalla de
+    // cocina igual se entera de un pedido tomado en el celular.
+    const poll = setInterval(() => void loadOrders(), 4000);
     return () => {
+      clearInterval(poll);
       socket.off("order:new", onOrder);
       socket.off("order:status", onOrder);
     };
