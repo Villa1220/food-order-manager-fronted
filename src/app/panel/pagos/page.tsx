@@ -1,5 +1,7 @@
-import PlaceholderPage from "@/features/staff/PlaceholderPage";
+"use client";
 
-export default function PagosPage() {
-  return <PlaceholderPage title="Pagos" />;
+import PagosPage from "@/features/payments/PagosPage";
+
+export default function Page() {
+  return <PagosPage />;
 }

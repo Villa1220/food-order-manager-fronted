@@ -32,7 +32,7 @@ function OrderCard({
   onCancel,
 }: {
   order: Order;
-  onToggleItem: (order: Order, item: OrderItem) => void;
+  onToggleItem: (order: Order, item: OrderItem, readyCount: number) => void;
   onAdd: (order: Order) => void;
   onCancel: (order: Order) => void;
 }) {
@@ -55,27 +55,40 @@ function OrderCard({
       <ul className="mt-3 space-y-2">
         {order.items.map((item) => {
           const done = isItemDone(item);
+          const marked = item.ready_count ?? (done ? item.quantity : 0);
           const start = itemTimerStart(item, order);
           return (
             <li key={item.id} className="flex items-start gap-2">
-              <button
-                type="button"
-                onClick={() => onToggleItem(order, item)}
-                className={cn(
-                  "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition",
-                  done
-                    ? "border-emerald-600 bg-emerald-600 text-white"
-                    : "border-border-subtle bg-background hover:border-brand-400",
-                )}
-                aria-pressed={done}
-                aria-label={
-                  done
-                    ? `Desmarcar ${item.name}`
-                    : `Marcar ${item.name} como salido`
-                }
-              >
-                {done ? <Check className="h-4 w-4" strokeWidth={3} /> : null}
-              </button>
+              <span className="flex shrink-0 flex-nowrap gap-1">
+                {Array.from({ length: item.quantity }, (_, index) => {
+                  const checked = index < marked;
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() =>
+                        onToggleItem(order, item, checked ? index : index + 1)
+                      }
+                      className={cn(
+                        "flex h-6 w-6 items-center justify-center rounded-md border transition",
+                        checked
+                          ? "border-emerald-600 bg-emerald-600 text-white"
+                          : "border-border-subtle bg-background hover:border-brand-400",
+                      )}
+                      aria-pressed={checked}
+                      aria-label={
+                        checked
+                          ? `Desmarcar ${item.name} ${index + 1} de ${item.quantity}`
+                          : `Marcar ${item.name} ${index + 1} de ${item.quantity}`
+                      }
+                    >
+                      {checked ? (
+                        <Check className="h-4 w-4" strokeWidth={3} />
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </span>
               <span className={cn("min-w-0 flex-1", done && "text-foreground/45")}>
                 <span className={done ? "line-through" : undefined}>
                   {item.quantity}× {item.name}
@@ -153,12 +166,11 @@ export default function PedidosPage() {
     };
   }, [loadOrders]);
 
-  async function toggleItem(order: Order, item: OrderItem) {
-    const next = isItemDone(item) ? "pendiente" : "listo";
+  async function toggleItem(order: Order, item: OrderItem, readyCount: number) {
     try {
       const data = await apiFetch<{ order: Order }>(
         `/api/orders/${order.id}/items/${item.id}`,
-        { method: "PATCH", body: JSON.stringify({ status: next }) },
+        { method: "PATCH", body: JSON.stringify({ ready_count: readyCount }) },
       );
       setOrders((prev) =>
         prev.map((row) => (row.id === data.order.id ? data.order : row)),
@@ -203,7 +215,9 @@ export default function PedidosPage() {
           <OrderCard
             key={order.id}
             order={order}
-            onToggleItem={(current, item) => void toggleItem(current, item)}
+            onToggleItem={(current, item, readyCount) =>
+              void toggleItem(current, item, readyCount)
+            }
             onAdd={openAdd}
             onCancel={(current) => void cancelOrder(current)}
           />

@@ -1,5 +1,7 @@
-import PlaceholderPage from "@/features/staff/PlaceholderPage";
+"use client";
+
+import MenuAdmin from "@/features/menu/MenuAdmin";
 
 export default function MenuAdminPage() {
-  return <PlaceholderPage title="Menú" />;
+  return <MenuAdmin />;
 }

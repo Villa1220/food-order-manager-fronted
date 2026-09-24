@@ -17,6 +17,7 @@ export interface MenuItem {
   category: MenuCategoryId;
   featured?: boolean;
   image?: string;
+  available?: boolean;
 }
 
 export const MENU_CATEGORIES: MenuCategory[] = [

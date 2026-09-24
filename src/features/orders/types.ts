@@ -5,6 +5,7 @@ export type OrderItem = {
   unit_price: string;
   notes: string | null;
   status: "pendiente" | "listo";
+  ready_count: number;
   ready_at: string | null;
   created_at: string;
 };
