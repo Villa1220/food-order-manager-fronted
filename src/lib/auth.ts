@@ -1,5 +1,11 @@
+/**
+ * En Vercel la página es HTTPS y el backend del VPS es HTTP, así que el
+ * navegador llama al mismo dominio y Next reenvía al servidor 2.28.111.55.
+ * En local, .env.local sigue apuntando a localhost:4000.
+ */
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+  process.env.NEXT_PUBLIC_API_URL ??
+  (process.env.NODE_ENV === "production" ? "" : "http://localhost:4000");
 
 export const GOOGLE_CLIENT_ID =
   process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
