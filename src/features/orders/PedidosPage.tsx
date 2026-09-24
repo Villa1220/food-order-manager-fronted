@@ -160,7 +160,7 @@ export default function PedidosPage() {
     const refresh = () => void loadOrders();
     socket.on("order:new", refresh);
     socket.on("order:status", refresh);
-    const poll = setInterval(refresh, 4000);
+    const poll = setInterval(refresh, 1500);
     return () => {
       clearInterval(poll);
       socket.off("order:new", refresh);
