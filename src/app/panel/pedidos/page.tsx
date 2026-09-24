@@ -1,5 +1,5 @@
-import PlaceholderPage from "@/features/staff/PlaceholderPage";
+import PedidosPage from "@/features/orders/PedidosPage";
 
-export default function PedidosPage() {
-  return <PlaceholderPage title="Pedidos" />;
+export default function PanelPedidosPage() {
+  return <PedidosPage />;
 }

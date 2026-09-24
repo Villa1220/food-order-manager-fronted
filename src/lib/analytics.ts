@@ -14,7 +14,9 @@ export type AnalyticsEventName =
   | "phone_click"
   | "menu_view"
   | "section_view"
-  | "social_click";
+  | "social_click"
+  | "login_click"
+  | "panel_click";
 
 export function trackEvent(
   name: AnalyticsEventName,
