@@ -17,6 +17,7 @@ export interface MenuItem {
   category: MenuCategoryId;
   featured?: boolean;
   image?: string;
+  available?: boolean;
 }
 
 export const MENU_CATEGORIES: MenuCategory[] = [
@@ -46,6 +47,7 @@ export const MENU_ITEMS: MenuItem[] = [
       "Papas cocinadas, lechuga, tomate, salsa de maní y aguacate.",
     category: "platos-fuertes",
     featured: true,
+    image: "/platos/medio%20cuy.jpg",
   },
   {
     id: "cuarto-cuy",
@@ -54,6 +56,7 @@ export const MENU_ITEMS: MenuItem[] = [
     description:
       "Papas cocinadas, lechuga, tomate, salsa de maní y aguacate.",
     category: "platos-fuertes",
+    image: "/platos/cuarto%20de%20cuy.jpg",
   },
   {
     id: "parrillada",
@@ -128,12 +131,23 @@ export const MENU_ITEMS: MenuItem[] = [
     name: "Salchipapas",
     price: "$2.00",
     category: "platos-fuertes",
+    image: "/platos/salchipapa.jpg",
   },
   {
     id: "papipollo",
     name: "Papipollo",
     price: "$2.50",
     category: "platos-fuertes",
+    image: "/platos/papipollo.jpg",
+  },
+  {
+    id: "menestra",
+    name: "Menestra con chuleta",
+    price: "$6.00",
+    description:
+      "Menestra de lenteja, chuleta, arroz, papas fritas, maduro, aguacate y ensalada.",
+    category: "platos-fuertes",
+    image: "/platos/Menestra.jpg",
   },
 
   // Sopas / Caldos
@@ -149,18 +163,21 @@ export const MENU_ITEMS: MenuItem[] = [
     name: "Caldo de gallina",
     price: "$4.50",
     category: "sopas-caldos",
+    image: "/platos/caldo%20de%20gallina.jpg",
   },
   {
     id: "menudo",
     name: "Menudo con morcilla de dulce",
     price: "$4.50",
     category: "sopas-caldos",
+    image: "/platos/Menudo%20con%20morcilla.jpg",
   },
   {
     id: "caldo-pata",
     name: "Caldo de pata",
     price: "$4.50",
     category: "sopas-caldos",
+    image: "/platos/Caldo%20de%20pata.jpg",
   },
 
   // Bebidas
@@ -169,12 +186,14 @@ export const MENU_ITEMS: MenuItem[] = [
     name: "Gaseosa retornable 2L",
     price: "$3.00",
     category: "bebidas",
+    image: "/platos/gaseosa%202l.jpg",
   },
   {
     id: "gaseosa-personal",
     name: "Gaseosa personal",
     price: "$1.00",
     category: "bebidas",
+    image: "/platos/gaseosa%20personal.jpg",
   },
   {
     id: "jarra",
@@ -193,12 +212,14 @@ export const MENU_ITEMS: MenuItem[] = [
     name: "Agua",
     price: "$1.00",
     category: "bebidas",
+    image: "/platos/Agua.jpg",
   },
   {
     id: "guitig",
     name: "Güitig",
     price: "$1.00",
     category: "bebidas",
+    image: "/platos/guitig.jpg",
   },
 
   // Postres

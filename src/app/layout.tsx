@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Playfair_Display, Lato } from "next/font/google";
 import { Providers } from "@/components/Providers";
+import { SiteAnalytics } from "@/components/analytics/SiteAnalytics";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -64,6 +65,7 @@ export default function RootLayout({
         className={`${playfair.variable} ${lato.variable} antialiased bg-background text-foreground`}
       >
         <Providers>{children}</Providers>
+        <SiteAnalytics />
       </body>
     </html>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import Lightbox from "yet-another-react-lightbox";
@@ -19,9 +19,15 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { MENU_CATEGORIES, MENU_ITEMS, type MenuCategoryId } from "./data";
+import { MENU_CATEGORIES, MENU_ITEMS, type MenuCategoryId, type MenuItem } from "./data";
+import { mediaUrl } from "./photos";
+import { API_URL } from "@/lib/auth";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { MENU_ITEM_I18N } from "@/lib/i18n/menu-i18n";
+
+function isSoldOutSlide(slide: object): boolean {
+  return "soldOut" in slide && slide.soldOut === true;
+}
 
 type FilterId = "todos" | MenuCategoryId;
 
@@ -33,10 +39,69 @@ const CATEGORY_ICONS: Record<FilterId, LucideIcon> = {
   postres: IceCream2,
 };
 
+type ApiMenuItem = {
+  id: number;
+  name: string;
+  description: string | null;
+  price: string | number;
+  available: boolean;
+  image_url: string | null;
+};
+
+type ApiCategory = {
+  id: number;
+  name: string;
+  items: ApiMenuItem[];
+};
+
+function categoryIdFromName(name: string): MenuCategoryId {
+  const value = name.toLowerCase();
+  if (value.includes("sopa")) return "sopas-caldos";
+  if (value.includes("bebida")) return "bebidas";
+  if (value.includes("postre")) return "postres";
+  return "platos-fuertes";
+}
+
+function money(price: string | number): string {
+  return `$${Number(price).toFixed(2)}`;
+}
+
 export function MenuSection() {
   const { locale, t } = useLanguage();
   const [active, setActive] = useState<FilterId>("todos");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [catalog, setCatalog] = useState<MenuItem[]>(MENU_ITEMS);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch(`${API_URL}/api/menu`)
+      .then((response) => response.json())
+      .then((data: { categories?: ApiCategory[] }) => {
+        if (cancelled || !data.categories?.length) return;
+        const next: MenuItem[] = [];
+        for (const category of data.categories) {
+          const categoryId = categoryIdFromName(category.name);
+          for (const item of category.items) {
+            const known = MENU_ITEMS.find((row) => row.name === item.name);
+            next.push({
+              id: known?.id ?? `db-${item.id}`,
+              name: item.name,
+              price: money(item.price),
+              description: item.description ?? undefined,
+              category: categoryId,
+              featured: item.available ? known?.featured : false,
+              image: mediaUrl(item.image_url, item.name) ?? undefined,
+              available: item.available,
+            });
+          }
+        }
+        if (next.length > 0) setCatalog(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filters: { id: FilterId; label: string }[] = useMemo(
     () => [
@@ -51,7 +116,7 @@ export function MenuSection() {
 
   const localizedItems = useMemo(
     () =>
-      MENU_ITEMS.map((item) => {
+      catalog.map((item) => {
         const i18n = MENU_ITEM_I18N[item.id]?.[locale];
         return {
           ...item,
@@ -59,7 +124,7 @@ export function MenuSection() {
           description: i18n?.description ?? item.description,
         };
       }),
-    [locale],
+    [catalog, locale],
   );
 
   const items = useMemo(
@@ -80,6 +145,7 @@ export function MenuSection() {
       itemsWithImage.map((item) => ({
         src: item.image!,
         alt: item.name,
+        soldOut: item.available === false,
         description: (
           <div className="mx-auto flex max-w-md flex-col items-center gap-1.5 text-center">
             <span className="font-display text-lg font-black italic text-gold-400">
@@ -132,6 +198,7 @@ export function MenuSection() {
           className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
         >
           {items.map((item) => {
+            const soldOut = item.available === false;
             const imageIndex = item.image
               ? itemsWithImage.findIndex((i) => i.id === item.id)
               : -1;
@@ -144,7 +211,7 @@ export function MenuSection() {
                   !item.image && "p-6",
                 )}
               >
-                {item.featured && (
+                {item.featured && !soldOut && (
                   <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-gold-400 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-black shadow">
                     <Star className="h-3 w-3 fill-black" aria-hidden="true" />
                     {t.menu.specialty}
@@ -156,16 +223,45 @@ export function MenuSection() {
                     type="button"
                     onClick={() => setLightboxIndex(imageIndex)}
                     aria-label={`${t.menu.enlarge}: ${item.name}`}
-                    className="relative aspect-[4/3] w-full cursor-zoom-in overflow-hidden bg-background"
+                    className="relative block aspect-[4/3] w-full cursor-zoom-in overflow-hidden bg-background"
                   >
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px"
-                      className="object-cover transition duration-300 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100">
+                    {item.image.startsWith("http") ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className={cn(
+                          "h-full w-full object-cover transition duration-300",
+                          soldOut
+                            ? "grayscale"
+                            : "group-hover:scale-105",
+                        )}
+                      />
+                    ) : (
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 400px"
+                        className={cn(
+                          "object-cover transition duration-300",
+                          soldOut
+                            ? "grayscale"
+                            : "group-hover:scale-105",
+                        )}
+                      />
+                    )}
+                    {soldOut ? (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/25">
+                        <span className="rounded-md bg-white/90 px-3 py-1 text-lg font-black uppercase tracking-wide text-red-600">
+                          Agotado
+                        </span>
+                      </span>
+                    ) : null}
+                    <div className={cn(
+                      "absolute inset-0 flex items-center justify-center bg-black/0 opacity-0 transition duration-300 group-hover:bg-black/40 group-hover:opacity-100",
+                      soldOut && "hidden",
+                    )}>
                       <span className="flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1.5 text-xs font-bold text-black shadow">
                         <Expand className="h-3.5 w-3.5" aria-hidden="true" />
                         {t.menu.enlarge}
@@ -200,7 +296,21 @@ export function MenuSection() {
         close={() => setLightboxIndex(null)}
         index={lightboxIndex ?? 0}
         slides={slides}
+        on={{ view: ({ index }) => setLightboxIndex(index) }}
         plugins={[Zoom, Captions]}
+        render={{
+          slideContainer: ({ slide, children }) => (
+            <div className={cn(isSoldOutSlide(slide) && "[&_img]:grayscale")}>{children}</div>
+          ),
+          slideHeader: ({ slide }) =>
+            isSoldOutSlide(slide) ? (
+              <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                <span className="rounded-md bg-white/90 px-4 py-1.5 text-3xl font-black uppercase tracking-wide text-red-600">
+                  Agotado
+                </span>
+              </div>
+            ) : null,
+        }}
         zoom={{ maxZoomPixelRatio: 3, scrollToZoom: true, doubleTapDelay: 250 }}
         styles={{
           container: { backgroundColor: "rgba(15, 12, 9, 0.96)" },
