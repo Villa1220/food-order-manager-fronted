@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ImagePlus, Pencil, Plus, X } from "lucide-react";
+import { ImagePlus, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -54,6 +54,7 @@ export default function MenuAdmin() {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     const data = await apiFetch<{ categories: MenuCategory[] }>("/api/menu");
@@ -153,6 +154,28 @@ export default function MenuAdmin() {
     }
   }
 
+  async function remove(item: MenuItemRow) {
+    const ok = window.confirm(
+      `¿Eliminar ${item.name}? Dejará de mostrarse en el menú público y en el bot.`,
+    );
+    if (!ok) return;
+    setDeletingId(item.id);
+    setError(null);
+    try {
+      await apiFetch(`/api/menu/items/${item.id}`, { method: "DELETE" });
+      if (draft?.id === item.id) setDraft(null);
+      await load();
+      toast.success("Plato eliminado", {
+        description: `${item.name} ya no está en el menú.`,
+        duration: 4500,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo eliminar");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
     <div className="pb-24">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -161,7 +184,7 @@ export default function MenuAdmin() {
             Menú
           </h1>
           <p className="mt-1 text-sm text-foreground/60">
-            Agrega platos, cambia el precio o reemplaza la foto.
+            Agrega platos, cambia el precio, reemplaza la foto o elimina un duplicado.
           </p>
         </div>
         <button
@@ -210,14 +233,25 @@ export default function MenuAdmin() {
                         ${Number(item.price).toFixed(2)}
                         {!item.available ? " · Agotado" : ""}
                       </p>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(category.id, item)}
-                        className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-700"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Editar
-                      </button>
+                      <div className="mt-2 flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(category.id, item)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === item.id}
+                          onClick={() => void remove(item)}
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 disabled:opacity-60"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          {deletingId === item.id ? "Eliminando…" : "Eliminar"}
+                        </button>
+                      </div>
                     </div>
                   </article>
                 );

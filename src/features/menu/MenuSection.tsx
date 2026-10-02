@@ -84,7 +84,7 @@ export function MenuSection() {
           for (const item of category.items) {
             const known = MENU_ITEMS.find((row) => row.name === item.name);
             next.push({
-              id: known?.id ?? `db-${item.id}`,
+              id: `db-${item.id}`,
               name: item.name,
               price: money(item.price),
               description: item.description ?? undefined,
@@ -117,7 +117,8 @@ export function MenuSection() {
   const localizedItems = useMemo(
     () =>
       catalog.map((item) => {
-        const i18n = MENU_ITEM_I18N[item.id]?.[locale];
+        const staticId = MENU_ITEMS.find((row) => row.name === item.name)?.id;
+        const i18n = staticId ? MENU_ITEM_I18N[staticId]?.[locale] : undefined;
         return {
           ...item,
           name: i18n?.name ?? item.name,
