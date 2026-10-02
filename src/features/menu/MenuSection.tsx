@@ -128,13 +128,15 @@ export function MenuSection() {
     [catalog, locale],
   );
 
-  const items = useMemo(
-    () =>
+  const items = useMemo(() => {
+    const list =
       active === "todos"
         ? localizedItems
-        : localizedItems.filter((item) => item.category === active),
-    [active, localizedItems],
-  );
+        : localizedItems.filter((item) => item.category === active);
+    return [...list].sort(
+      (a, b) => Number(Boolean(b.featured)) - Number(Boolean(a.featured)),
+    );
+  }, [active, localizedItems]);
 
   const itemsWithImage = useMemo(
     () => items.filter((item) => Boolean(item.image)),
@@ -196,7 +198,7 @@ export function MenuSection() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid items-start gap-5 sm:grid-cols-2 lg:grid-cols-3"
         >
           {items.map((item) => {
             const soldOut = item.available === false;
