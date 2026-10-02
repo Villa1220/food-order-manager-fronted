@@ -154,11 +154,26 @@ export default function MenuAdmin() {
     }
   }
 
+  function askRemove(item: MenuItemRow) {
+    toast(`Eliminar ${item.name}`, {
+      description: "Dejará de mostrarse en el menú público y en el bot.",
+      duration: Infinity,
+      action: {
+        label: "Eliminar",
+        onClick: () => void remove(item),
+      },
+      cancel: {
+        label: "Cancelar",
+        onClick: () => undefined,
+      },
+      classNames: {
+        actionButton: "!rounded-lg !bg-[#9f1239] !px-3 !font-semibold !text-white",
+        cancelButton: "!rounded-lg !bg-white !px-3 !font-semibold !text-[#2b1003]",
+      },
+    });
+  }
+
   async function remove(item: MenuItemRow) {
-    const ok = window.confirm(
-      `¿Eliminar ${item.name}? Dejará de mostrarse en el menú público y en el bot.`,
-    );
-    if (!ok) return;
     setDeletingId(item.id);
     setError(null);
     try {
@@ -245,7 +260,7 @@ export default function MenuAdmin() {
                         <button
                           type="button"
                           disabled={deletingId === item.id}
-                          onClick={() => void remove(item)}
+                          onClick={() => askRemove(item)}
                           className="inline-flex items-center gap-1 text-xs font-semibold text-red-700 disabled:opacity-60"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
