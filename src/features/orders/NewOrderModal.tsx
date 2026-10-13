@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, Search, Send, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import type { Order } from "@/features/orders/types";
 
 export type SearchableItem = {
@@ -26,6 +27,7 @@ type Props = {
 export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
+  const [keyboardInset, setKeyboardInset] = useState(0);
   const [results, setResults] = useState<SearchableItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -41,6 +43,26 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
     const t = setTimeout(() => searchRef.current?.focus(), 50);
     return () => clearTimeout(t);
   }, [open, addingTo?.id]);
+
+  useEffect(() => {
+    if (!open) {
+      setKeyboardInset(0);
+      return;
+    }
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+    const update = () => {
+      const covered = window.innerHeight - viewport.height - viewport.offsetTop;
+      setKeyboardInset(covered > 80 ? covered : 0);
+    };
+    update();
+    viewport.addEventListener("resize", update);
+    viewport.addEventListener("scroll", update);
+    return () => {
+      viewport.removeEventListener("resize", update);
+      viewport.removeEventListener("scroll", update);
+    };
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -179,6 +201,14 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
         aria-modal="true"
         aria-labelledby="new-order-title"
         className="relative z-10 flex max-h-[92vh] w-full max-w-2xl flex-col rounded-t-3xl bg-surface shadow-2xl sm:rounded-3xl"
+        style={
+          keyboardInset > 0
+            ? {
+                marginBottom: keyboardInset,
+                maxHeight: `calc(100dvh - ${keyboardInset + 12}px)`,
+              }
+            : undefined
+        }
       >
         <header className="flex items-center justify-between border-b border-border-subtle px-5 py-4">
           <h2
@@ -197,7 +227,12 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
           </button>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col px-5 py-4",
+            keyboardInset > 0 ? "overflow-hidden" : "overflow-y-auto",
+          )}
+        >
           {error ? (
             <p className="mb-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
               {error}
@@ -208,6 +243,13 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
             <input
               ref={searchRef}
+              type="search"
+              enterKeyHint="search"
+              name="buscar-plato"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Escribe el nombre del plato…"
@@ -215,7 +257,12 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
             />
           </label>
 
-          <ul className="mt-3 max-h-48 space-y-1 overflow-y-auto">
+          <ul
+            className={cn(
+              "mt-3 space-y-1 overflow-y-auto",
+              keyboardInset > 0 ? "min-h-0 flex-1" : "max-h-48",
+            )}
+          >
             {loading ? (
               <li className="px-2 py-3 text-sm text-foreground/40">Buscando…</li>
             ) : results.length === 0 ? (
@@ -300,6 +347,8 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
                     <input
                       value={line.notes}
                       onChange={(e) => setLineNotes(line.item.id, e.target.value)}
+                      name="detalle-plato"
+                      autoComplete="off"
                       placeholder="Detalle de este plato (sin ají, término medio…)"
                       className="mt-2 w-full rounded-lg border border-border-subtle bg-surface px-3 py-1.5 text-xs outline-none focus:border-brand-400"
                     />
@@ -310,7 +359,12 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        <footer className="space-y-3 border-t border-border-subtle px-5 py-4">
+        <footer
+          className={cn(
+            "space-y-3 border-t border-border-subtle px-5 py-4",
+            keyboardInset > 0 && "hidden",
+          )}
+        >
           {isAdd ? (
             <p className="text-sm text-foreground/60">
               Mesa {addingTo?.table_number ?? "—"} · se suma a la comanda ya enviada.
@@ -321,6 +375,9 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
               <input
                 value={tableNumber}
                 onChange={(e) => setTableNumber(e.target.value)}
+                name="mesa"
+                inputMode="numeric"
+                autoComplete="off"
                 placeholder="Ej. 4"
                 className="w-full rounded-lg border border-border-subtle bg-background px-3 py-2"
               />
