@@ -18,6 +18,20 @@ import {
   type OrderItem,
 } from "@/features/orders/types";
 import { cn } from "@/lib/utils";
+import {
+  addedItems,
+  addedPhrase,
+  crossedNudge,
+  enableVoice,
+  newOrderPhrase,
+  nudgeFallback,
+  oldestPendingMinutes,
+  pendingDishes,
+  snapshotItems,
+  speak,
+  voiceEnabled,
+  type ItemSnapshot,
+} from "@/app/kds/announce";
 import { useRouter } from "next/navigation";
 
 const KDS_THEME_KEY = "kds-theme";
@@ -116,7 +130,94 @@ function KdsBoard() {
   const [error, setError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [light, setLight] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [, forceTick] = useState(0);
+  const ordersRef = useRef<Order[]>([]);
+  const voiceOnRef = useRef(false);
+  const seenRef = useRef<{
+    primed: boolean;
+    orders: Map<number, { items: ItemSnapshot; nudges: Set<number> }>;
+  }>({ primed: false, orders: new Map() });
+  ordersRef.current = orders;
+  voiceOnRef.current = voiceOn;
+
+  useEffect(() => {
+    setVoiceOn(voiceEnabled());
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const seen = seenRef.current;
+    if (!seen.primed) {
+      for (const order of orders) {
+        const nudges = new Set<number>();
+        const minutes = oldestPendingMinutes(order);
+        for (const level of [10, 20, 30]) {
+          if (minutes >= level) nudges.add(level);
+        }
+        seen.orders.set(order.id, { items: snapshotItems(order), nudges });
+      }
+      seen.primed = true;
+      return;
+    }
+
+    const currentIds = new Set(orders.map((order) => order.id));
+    for (const id of seen.orders.keys()) {
+      if (!currentIds.has(id)) seen.orders.delete(id);
+    }
+
+    if (!voiceOn) {
+      for (const order of orders) {
+        const previous = seen.orders.get(order.id);
+        seen.orders.set(order.id, {
+          items: snapshotItems(order),
+          nudges: previous?.nudges ?? new Set(),
+        });
+      }
+      return;
+    }
+
+    for (const order of orders) {
+      const previous = seen.orders.get(order.id);
+      if (!previous) {
+        speak(newOrderPhrase(order));
+        seen.orders.set(order.id, { items: snapshotItems(order), nudges: new Set() });
+        continue;
+      }
+      const added = addedItems(previous.items, order);
+      if (added.length > 0) speak(addedPhrase(added));
+      seen.orders.set(order.id, { items: snapshotItems(order), nudges: previous.nudges });
+    }
+  }, [loaded, orders, voiceOn]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!voiceOnRef.current || !seenRef.current.primed) return;
+      const now = Date.now();
+      for (const order of ordersRef.current) {
+        const tracked = seenRef.current.orders.get(order.id);
+        if (!tracked) continue;
+        const minutes = oldestPendingMinutes(order, now);
+        const level = crossedNudge(minutes, tracked.nudges);
+        if (!level) continue;
+        for (const step of [10, 20, 30]) {
+          if (step <= level) tracked.nudges.add(step);
+        }
+        const dishes = pendingDishes(order, level, now);
+        if (dishes.length === 0) continue;
+        const names = dishes.map((dish) => dish.name);
+        const phrases = dishes.map((dish) => dish.phrase);
+        void apiFetch<{ phrase: string }>("/api/kitchen/nudge", {
+          method: "POST",
+          body: JSON.stringify({ minutes: level, dishes: names }),
+        })
+          .then((data) => speak(data.phrase))
+          .catch(() => speak(nudgeFallback(level, phrases)));
+      }
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     try {
@@ -152,6 +253,7 @@ function KdsBoard() {
         ),
       );
       setError(null);
+      setLoaded(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error de red");
     }
@@ -232,6 +334,18 @@ function KdsBoard() {
           </p>
         </div>
         <div className="flex items-center gap-3 text-sm">
+          <button
+            type="button"
+            onClick={() => setVoiceOn(enableVoice())}
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition",
+              headerBtn,
+              voiceOn && "border-emerald-500 text-emerald-600",
+            )}
+            aria-pressed={voiceOn}
+          >
+            {voiceOn ? "Voz activa" : "Activar voz"}
+          </button>
           <button
             type="button"
             onClick={() => void toggleFullscreen()}
