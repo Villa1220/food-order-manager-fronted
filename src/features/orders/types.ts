@@ -42,6 +42,18 @@ export function isItemDone(item: OrderItem): boolean {
   return item.status === "listo";
 }
 
+/** Unidades que el mesero ya marcó. El plato sigue pendiente hasta completarlas. */
+export function markedUnits(item: OrderItem): number {
+  if (item.status === "listo") return item.quantity;
+  const marked = Number(item.ready_count ?? 0);
+  if (!Number.isFinite(marked)) return 0;
+  return Math.max(0, Math.min(item.quantity, Math.floor(marked)));
+}
+
+export function pendingUnits(item: OrderItem): number {
+  return Math.max(0, item.quantity - markedUnits(item));
+}
+
 export function pendingItems(order: Order): OrderItem[] {
   return order.items.filter((item) => !isItemDone(item));
 }

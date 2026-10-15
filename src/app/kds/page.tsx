@@ -9,12 +9,13 @@ import { getSocket } from "@/lib/socket";
 import { RequireStaff } from "@/features/staff/RequireStaff";
 import {
   ACTIVE_STATUSES,
-  doneItems,
   elapsedSince,
   formatElapsed,
   itemTimerStart,
-  pendingItems,
+  markedUnits,
+  pendingUnits,
   type Order,
+  type OrderItem,
 } from "@/features/orders/types";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -67,12 +68,17 @@ async function exitFullscreen() {
   await doc.webkitExitFullscreen?.();
 }
 
-/** Platos que cocina aún debe preparar (sin visto del mesero). */
+function unitsForColumn(item: OrderItem, column: "pendiente" | "listo"): number {
+  return column === "pendiente" ? pendingUnits(item) : markedUnits(item);
+}
+
+/** Platos que cocina aún debe preparar, restando las unidades ya marcadas. */
 function kitchenTotals(orders: Order[]): { name: string; quantity: number }[] {
   const map = new Map<string, number>();
   for (const order of orders) {
-    for (const item of pendingItems(order)) {
-      map.set(item.name, (map.get(item.name) ?? 0) + item.quantity);
+    for (const item of order.items) {
+      const left = pendingUnits(item);
+      if (left > 0) map.set(item.name, (map.get(item.name) ?? 0) + left);
     }
   }
   return [...map.entries()]
@@ -197,7 +203,9 @@ function KdsBoard() {
 
   const pending = useMemo(() => kitchenTotals(orders), [orders]);
   const pendingPlates = pending.reduce((sum, row) => sum + row.quantity, 0);
-  const pendingTickets = orders.filter((o) => pendingItems(o).length > 0).length;
+  const pendingTickets = orders.filter((order) =>
+    order.items.some((item) => pendingUnits(item) > 0),
+  ).length;
 
   const headerBtn = light
     ? "border-ink/15 text-ink/70 hover:border-brand-500 hover:text-brand-600"
@@ -321,7 +329,10 @@ function KdsBoard() {
           const tickets = orders
             .map((order) => ({
               order,
-              items: col.key === "pendiente" ? pendingItems(order) : doneItems(order),
+              items: order.items.flatMap((item) => {
+                const quantity = unitsForColumn(item, col.key);
+                return quantity > 0 ? [{ ...item, quantity }] : [];
+              }),
             }))
             .filter((row) => row.items.length > 0);
           return (
