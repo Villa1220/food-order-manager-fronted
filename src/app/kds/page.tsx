@@ -22,6 +22,7 @@ import {
   addedItems,
   addedPhrase,
   crossedNudge,
+  dispatchBoardPhrase,
   enableVoice,
   newOrderPhrase,
   nudgeFallback,
@@ -29,6 +30,7 @@ import {
   pendingDishes,
   snapshotItems,
   speak,
+  speakTwice,
   voiceEnabled,
   type ItemSnapshot,
 } from "@/app/kds/announce";
@@ -181,7 +183,7 @@ function KdsBoard() {
     for (const order of orders) {
       const previous = seen.orders.get(order.id);
       if (!previous) {
-        speak(newOrderPhrase(order));
+        speakTwice(newOrderPhrase(order));
         seen.orders.set(order.id, { items: snapshotItems(order), nudges: new Set() });
         continue;
       }
@@ -216,6 +218,15 @@ function KdsBoard() {
           .catch(() => speak(nudgeFallback(level, phrases)));
       }
     }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (!voiceOnRef.current) return;
+      const phrase = dispatchBoardPhrase(ordersRef.current);
+      if (phrase) speak(phrase);
+    }, 3 * 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 

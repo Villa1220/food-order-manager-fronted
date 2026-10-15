@@ -95,6 +95,28 @@ export function speak(text: string) {
   drain();
 }
 
+export function speakTwice(text: string) {
+  speak(text);
+  speak(text);
+}
+
+/** Resumen de lo que cocina aún no despacha, sumando todas las comandas. */
+export function dispatchBoardPhrase(orders: Order[]): string | null {
+  const totals = new Map<string, number>();
+  for (const order of orders) {
+    for (const item of order.items) {
+      const left = pendingUnits(item);
+      if (left > 0) totals.set(item.name, (totals.get(item.name) ?? 0) + left);
+    }
+  }
+  if (totals.size === 0) return null;
+  const list = [...totals.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
+    .map(([name, quantity]) => itemPhrase(quantity, name))
+    .join(". ");
+  return `Recuerden que tenemos que despachar lo siguiente. ${list}.`;
+}
+
 /** El navegador solo habla después de un toque. Esta función debe llamarse desde un click. */
 export function enableVoice(): boolean {
   if (!window.speechSynthesis) return false;
