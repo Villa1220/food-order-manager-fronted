@@ -84,8 +84,29 @@ async function exitFullscreen() {
   await doc.webkitExitFullscreen?.();
 }
 
-function unitsForColumn(item: OrderItem, column: "pendiente" | "listo"): number {
-  return column === "pendiente" ? pendingUnits(item) : markedUnits(item);
+const READY_VISIBLE_MS = 5 * 60 * 1000;
+
+function unitsForColumn(item: OrderItem, column: "pendiente" | "listo", now: number): number {
+  if (column === "pendiente") return pendingUnits(item);
+  const marked = markedUnits(item);
+  if (marked < 1) return 0;
+  if (item.status !== "listo" || !item.ready_at) return marked;
+  return now - new Date(item.ready_at).getTime() < READY_VISIBLE_MS ? marked : 0;
+}
+
+/** Último grupo del código (00012). Ese contador vuelve a 1 cada día. */
+function dailyTicketNumber(code: string): string {
+  const match = code.match(/-(\d+)$/);
+  if (!match) return "—";
+  return String(Number(match[1]));
+}
+
+function readyLeavesIn(readyAt: string, now: number): string {
+  const left = Math.max(0, READY_VISIBLE_MS - (now - new Date(readyAt).getTime()));
+  const total = Math.ceil(left / 1000);
+  const minutes = Math.floor(total / 60);
+  const seconds = String(total % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
 }
 
 /** Platos que cocina aún debe preparar, restando las unidades ya marcadas. */
@@ -327,7 +348,7 @@ function KdsBoard() {
     <div
       ref={boardRef}
       className={cn(
-        "flex min-h-screen flex-col",
+        "flex h-screen flex-col overflow-hidden",
         light ? "bg-[#faf6ef] text-ink" : "bg-ink text-cream",
       )}
     >
@@ -448,46 +469,88 @@ function KdsBoard() {
           </ul>
         )}
       </section>
-      <div className="grid flex-1 grid-cols-1 gap-4 p-4 md:grid-cols-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
         {COLUMNS.map((col) => {
+          const now = Date.now();
           const tickets = orders
             .map((order) => ({
               order,
               items: order.items.flatMap((item) => {
-                const quantity = unitsForColumn(item, col.key);
+                const quantity = unitsForColumn(item, col.key, now);
                 return quantity > 0 ? [{ ...item, quantity }] : [];
               }),
             }))
             .filter((row) => row.items.length > 0);
+          const pendingColumn = col.key === "pendiente";
           return (
             <section
               key={col.key}
               className={cn(
-                "rounded-xl border p-4",
+                "flex min-h-0 flex-col rounded-xl border",
+                pendingColumn ? "flex-1 p-4" : "shrink-0 p-3",
                 light ? col.lightClass : col.darkClass,
               )}
             >
-              <h2 className="mb-4 text-sm font-bold uppercase tracking-wide">
-                {col.label} ({tickets.length})
-              </h2>
+              <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+                <h2
+                  className={cn(
+                    "font-bold tracking-wide",
+                    pendingColumn
+                      ? "font-display text-3xl font-black italic"
+                      : "text-sm uppercase",
+                  )}
+                >
+                  {col.label} ({tickets.length})
+                </h2>
+                {pendingColumn ? (
+                  <p className={cn("text-xs", light ? "text-ink/55" : "text-cream/55")}>
+                    Empieza por la derecha. El número vuelve a 1 cada día.
+                  </p>
+                ) : (
+                  <p className={cn("text-xs", light ? "text-ink/45" : "text-cream/45")}>
+                    Se quita de esta pantalla a los 5 minutos.
+                  </p>
+                )}
+              </div>
               {tickets.length === 0 ? (
                 <p className={cn("text-sm", light ? "text-ink/40" : "text-cream/40")}>
-                  Sin pedidos
+                  {pendingColumn ? "Sin pedidos" : "Nada listo en los últimos 5 minutos."}
                 </p>
               ) : (
-                <ul className="flex flex-col gap-3">
+                <ul
+                  className={cn(
+                    "flex flex-row-reverse gap-3",
+                    pendingColumn
+                      ? "min-h-0 flex-1 flex-wrap content-start items-start overflow-auto"
+                      : "flex-nowrap overflow-x-auto pb-1",
+                  )}
+                >
                   {tickets.map(({ order, items }) => (
                     <li
                       key={`${col.key}-${order.id}`}
                       className={cn(
-                        "rounded-lg p-3 text-sm",
+                        "shrink-0 rounded-lg p-3 text-sm",
+                        pendingColumn ? "w-72" : "w-64",
                         light ? "bg-white shadow-sm" : "bg-ink-soft",
                       )}
                     >
-                      <div>
-                        <p className="font-bold">{order.order_code}</p>
-                        <p className={cn(light ? "text-ink/65" : "text-cream/70")}>
-                          Mesa {order.table_number ?? "—"} · {order.channel}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className={cn("truncate", light ? "text-ink/65" : "text-cream/70")}>
+                            Mesa {order.table_number ?? "—"} ·{" "}
+                            {order.channel === "whatsapp" ? "WhatsApp" : "salón"}
+                          </p>
+                          <p className={cn("truncate text-xs", light ? "text-ink/40" : "text-cream/40")}>
+                            {order.order_code}
+                          </p>
+                        </div>
+                        <p
+                          className={cn(
+                            "font-display font-black tabular-nums leading-none",
+                            pendingColumn ? "text-5xl text-brand-600" : "text-3xl text-emerald-500",
+                          )}
+                        >
+                          {dailyTicketNumber(order.order_code)}
                         </p>
                       </div>
                       <ul
@@ -520,7 +583,9 @@ function KdsBoard() {
                                   timerTone(minutes, light, stopped),
                                 )}
                               >
-                                {formatElapsed(start, item.ready_at)}
+                                {col.key === "listo" && item.ready_at
+                                  ? `sale ${readyLeavesIn(item.ready_at, now)}`
+                                  : formatElapsed(start, item.ready_at)}
                               </span>
                             </li>
                           );
