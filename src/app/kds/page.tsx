@@ -23,6 +23,7 @@ import {
   addedPhrase,
   announceNewOrder,
   crossedNudge,
+  NUDGE_MINUTES,
   dispatchBoardPhrase,
   enableVoice,
   nudgeFallback,
@@ -154,7 +155,7 @@ function KdsBoard() {
       for (const order of orders) {
         const nudges = new Set<number>();
         const minutes = oldestPendingMinutes(order);
-        for (const level of [5, 10, 15]) {
+        for (const level of NUDGE_MINUTES) {
           if (minutes >= level) nudges.add(level);
         }
         seen.orders.set(order.id, { items: snapshotItems(order), nudges });
@@ -202,7 +203,7 @@ function KdsBoard() {
         const minutes = oldestPendingMinutes(order, now);
         const level = crossedNudge(minutes, tracked.nudges);
         if (!level) continue;
-        for (const step of [5, 10, 15]) {
+        for (const step of NUDGE_MINUTES) {
           if (step <= level) tracked.nudges.add(step);
         }
         const dishes = pendingDishes(order, level, now);
