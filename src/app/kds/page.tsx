@@ -521,16 +521,16 @@ function KdsBoard() {
                   className={cn(
                     "flex gap-3",
                     pendingColumn
-                      ? "min-h-0 flex-1 flex-wrap content-start items-start overflow-auto"
-                      : "flex-nowrap overflow-x-auto pb-1",
+                      ? "min-h-0 flex-1 flex-wrap content-start items-stretch overflow-hidden"
+                      : "flex-wrap",
                   )}
                 >
                   {tickets.map(({ order, items }) => (
                     <li
                       key={`${col.key}-${order.id}`}
                       className={cn(
-                        "shrink-0 rounded-lg p-3 text-sm",
-                        pendingColumn ? "w-72" : "w-64",
+                        "rounded-lg p-3 text-sm",
+                        pendingColumn ? "min-w-[min(100%,32rem)] flex-1" : "w-full sm:w-auto sm:min-w-64",
                         light ? "bg-white shadow-sm" : "bg-ink-soft",
                       )}
                     >
@@ -555,7 +555,10 @@ function KdsBoard() {
                       </div>
                       <ul
                         className={cn(
-                          "mt-2 space-y-2 border-t pt-2",
+                          "mt-2 gap-2 border-t pt-2",
+                          pendingColumn
+                            ? "grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))]"
+                            : "grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]",
                           light ? "border-ink/10" : "border-cream/10",
                         )}
                       >
