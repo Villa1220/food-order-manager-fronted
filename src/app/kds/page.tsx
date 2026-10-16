@@ -12,10 +12,8 @@ import {
   elapsedSince,
   formatElapsed,
   itemTimerStart,
-  markedUnits,
   pendingUnits,
   type Order,
-  type OrderItem,
 } from "@/features/orders/types";
 import { cn } from "@/lib/utils";
 import {
@@ -37,26 +35,6 @@ import {
 import { useRouter } from "next/navigation";
 
 const KDS_THEME_KEY = "kds-theme";
-
-const COLUMNS: {
-  key: "pendiente" | "listo";
-  label: string;
-  darkClass: string;
-  lightClass: string;
-}[] = [
-  {
-    key: "pendiente",
-    label: "Pendiente",
-    darkClass: "border-red-700/40 bg-red-950/40",
-    lightClass: "border-red-200 bg-red-50",
-  },
-  {
-    key: "listo",
-    label: "Listo",
-    darkClass: "border-emerald-600/40 bg-emerald-950/30",
-    lightClass: "border-emerald-200 bg-emerald-50",
-  },
-];
 
 function isFullscreen(): boolean {
   return Boolean(document.fullscreenElement);
@@ -84,29 +62,11 @@ async function exitFullscreen() {
   await doc.webkitExitFullscreen?.();
 }
 
-const READY_VISIBLE_MS = 5 * 60 * 1000;
-
-function unitsForColumn(item: OrderItem, column: "pendiente" | "listo", now: number): number {
-  if (column === "pendiente") return pendingUnits(item);
-  const marked = markedUnits(item);
-  if (marked < 1) return 0;
-  if (item.status !== "listo" || !item.ready_at) return marked;
-  return now - new Date(item.ready_at).getTime() < READY_VISIBLE_MS ? marked : 0;
-}
-
 /** Último grupo del código (00012). Ese contador vuelve a 1 cada día. */
 function dailyTicketNumber(code: string): string {
   const match = code.match(/-(\d+)$/);
   if (!match) return "—";
   return String(Number(match[1]));
-}
-
-function readyLeavesIn(readyAt: string, now: number): string {
-  const left = Math.max(0, READY_VISIBLE_MS - (now - new Date(readyAt).getTime()));
-  const total = Math.ceil(left / 1000);
-  const minutes = Math.floor(total / 60);
-  const seconds = String(total % 60).padStart(2, "0");
-  return `${minutes}:${seconds}`;
 }
 
 /** Platos que cocina aún debe preparar, restando las unidades ya marcadas. */
@@ -469,68 +429,46 @@ function KdsBoard() {
           </ul>
         )}
       </section>
-      <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-        {COLUMNS.map((col) => {
-          const now = Date.now();
+      <div className="flex min-h-0 flex-1 flex-col p-4">
+        {(() => {
           const tickets = orders
             .map((order) => ({
               order,
               items: order.items.flatMap((item) => {
-                const quantity = unitsForColumn(item, col.key, now);
+                const quantity = pendingUnits(item);
                 return quantity > 0 ? [{ ...item, quantity }] : [];
               }),
             }))
             .filter((row) => row.items.length > 0);
-          const pendingColumn = col.key === "pendiente";
           return (
             <section
-              key={col.key}
               className={cn(
-                "flex min-h-0 flex-col rounded-xl border",
-                pendingColumn ? "flex-1 p-4" : "shrink-0 p-3",
-                light ? col.lightClass : col.darkClass,
+                "flex min-h-0 flex-1 flex-col rounded-xl border p-4",
+                light ? "border-red-200 bg-red-50" : "border-red-700/40 bg-red-950/40",
               )}
             >
               <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-                <h2
-                  className={cn(
-                    "font-bold tracking-wide",
-                    pendingColumn
-                      ? "font-display text-3xl font-black italic"
-                      : "text-sm uppercase",
-                  )}
-                >
-                  {col.label} ({tickets.length})
+                <h2 className="font-display text-3xl font-black italic tracking-wide">
+                  Pendiente ({tickets.length})
                 </h2>
-                {pendingColumn ? (
-                  <p className={cn("text-xs", light ? "text-ink/55" : "text-cream/55")}>
-                    Empieza por la izquierda. El número vuelve a 1 cada día.
-                  </p>
-                ) : (
-                  <p className={cn("text-xs", light ? "text-ink/45" : "text-cream/45")}>
-                    Se quita de esta pantalla a los 5 minutos.
-                  </p>
-                )}
+                <p className={cn("text-xs", light ? "text-ink/55" : "text-cream/55")}>
+                  De arriba hacia abajo. El número vuelve a 1 cada día.
+                </p>
               </div>
               {tickets.length === 0 ? (
                 <p className={cn("text-sm", light ? "text-ink/40" : "text-cream/40")}>
-                  {pendingColumn ? "Sin pedidos" : "Nada listo en los últimos 5 minutos."}
+                  Sin pedidos
                 </p>
               ) : (
-                <ul
-                  className={cn(
-                    "flex gap-3",
-                    pendingColumn
-                      ? "min-h-0 flex-1 flex-wrap content-start items-stretch overflow-hidden"
-                      : "flex-wrap",
-                  )}
-                >
-                  {tickets.map(({ order, items }) => (
+                <ul className="flex min-h-0 flex-1 flex-col flex-wrap content-start items-start gap-3 overflow-hidden">
+                  {tickets.map(({ order, items }) => {
+                    const wide = items.length > 7;
+                    return (
                     <li
-                      key={`${col.key}-${order.id}`}
+                      key={order.id}
                       className={cn(
-                        "rounded-lg p-3 text-sm",
-                        pendingColumn ? "min-w-[min(100%,32rem)] flex-1" : "w-full sm:w-auto sm:min-w-64",
+                        "shrink-0 rounded-lg p-3 text-sm",
+                        wide ? "w-[34rem]" : "w-72",
                         light ? "bg-white shadow-sm" : "bg-ink-soft",
                       )}
                     >
@@ -544,27 +482,19 @@ function KdsBoard() {
                             {order.order_code}
                           </p>
                         </div>
-                        <p
-                          className={cn(
-                            "font-display font-black tabular-nums leading-none",
-                            pendingColumn ? "text-5xl text-brand-600" : "text-3xl text-emerald-500",
-                          )}
-                        >
+                        <p className="font-display text-4xl font-black tabular-nums leading-none text-brand-600">
                           {dailyTicketNumber(order.order_code)}
                         </p>
                       </div>
                       <ul
                         className={cn(
-                          "mt-2 gap-2 border-t pt-2",
-                          pendingColumn
-                            ? "grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))]"
-                            : "grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]",
+                          "mt-2 border-t pt-2",
+                          wide ? "grid grid-cols-2 gap-x-4 gap-y-1" : "space-y-1",
                           light ? "border-ink/10" : "border-cream/10",
                         )}
                       >
                         {items.map((item) => {
                           const start = itemTimerStart(item, order);
-                          const stopped = Boolean(item.ready_at);
                           const { minutes } = elapsedSince(start, item.ready_at);
                           return (
                             <li
@@ -583,12 +513,10 @@ function KdsBoard() {
                               <span
                                 className={cn(
                                   "shrink-0 rounded-full px-2 py-0.5 font-mono text-xs font-bold tabular-nums",
-                                  timerTone(minutes, light, stopped),
+                                  timerTone(minutes, light, false),
                                 )}
                               >
-                                {col.key === "listo" && item.ready_at
-                                  ? `sale ${readyLeavesIn(item.ready_at, now)}`
-                                  : formatElapsed(start, item.ready_at)}
+                                {formatElapsed(start, item.ready_at)}
                               </span>
                             </li>
                           );
@@ -605,12 +533,13 @@ function KdsBoard() {
                         </p>
                       ) : null}
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </section>
           );
-        })}
+        })()}
       </div>
     </div>
   );
