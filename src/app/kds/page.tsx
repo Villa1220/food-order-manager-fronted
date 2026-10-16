@@ -11,6 +11,7 @@ import {
   ACTIVE_STATUSES,
   elapsedSince,
   formatElapsed,
+  dailyTicketNumber,
   itemTimerStart,
   pendingUnits,
   type Order,
@@ -60,13 +61,6 @@ async function exitFullscreen() {
     return;
   }
   await doc.webkitExitFullscreen?.();
-}
-
-/** Último grupo del código (00012). Ese contador vuelve a 1 cada día. */
-function dailyTicketNumber(code: string): string {
-  const match = code.match(/-(\d+)$/);
-  if (!match) return "—";
-  return String(Number(match[1]));
 }
 
 /** Platos que cocina aún debe preparar, restando las unidades ya marcadas. */

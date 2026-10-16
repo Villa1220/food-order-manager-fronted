@@ -102,3 +102,10 @@ export function itemTimerStart(item: OrderItem, order: Order): string {
   return item.created_at || order.received_at;
 }
 
+/** Último grupo del código (00012). Ese contador vuelve a 1 cada día. */
+export function dailyTicketNumber(code: string): string {
+  const match = code.match(/-(\d+)$/);
+  if (!match) return "—";
+  return String(Number(match[1]));
+}
+
