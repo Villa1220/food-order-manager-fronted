@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
@@ -26,16 +26,76 @@ function isOrderReady(order: Order) {
   return order.items.length > 0 && order.items.every(isItemDone);
 }
 
+function MesaField({
+  order,
+  onSaved,
+  onError,
+}: {
+  order: Order;
+  onSaved: (order: Order) => void;
+  onError: (message: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [value, setValue] = useState(order.table_number ?? "");
+
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setValue(order.table_number ?? "");
+    }
+  }, [order.id, order.table_number]);
+
+  async function save() {
+    const next = value.trim();
+    if (next === (order.table_number ?? "")) return;
+    try {
+      const data = await apiFetch<{ order: Order }>(`/api/orders/${order.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ table_number: next }),
+      });
+      onSaved(data.order);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "No se pudo guardar la mesa");
+    }
+  }
+
+  return (
+    <label className="mt-1 flex items-center gap-2 text-foreground/60">
+      <span>Mesa</span>
+      <input
+        ref={inputRef}
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onBlur={() => void save()}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+        name="mesa-pedido"
+        inputMode="numeric"
+        enterKeyHint="done"
+        autoComplete="off"
+        placeholder="número"
+        aria-label="Número de mesa"
+        className="w-16 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-foreground outline-none focus:border-brand-400 focus:bg-background"
+      />
+      <span>· ${Number(order.subtotal).toFixed(2)}</span>
+    </label>
+  );
+}
+
 function OrderCard({
   order,
   onToggleItem,
   onAdd,
   onCancel,
+  onTable,
+  onError,
 }: {
   order: Order;
   onToggleItem: (order: Order, item: OrderItem, readyCount: number) => void;
   onAdd: (order: Order) => void;
   onCancel: (order: Order) => void;
+  onTable: (order: Order) => void;
+  onError: (message: string) => void;
 }) {
   const ready = isOrderReady(order);
   return (
@@ -55,9 +115,7 @@ function OrderCard({
           {ready ? "Listo" : "Pendiente"}
         </span>
       </div>
-      <p className="mt-1 text-foreground/60">
-        Mesa {order.table_number ?? "—"} · ${Number(order.subtotal).toFixed(2)}
-      </p>
+      <MesaField order={order} onSaved={onTable} onError={onError} />
       <ul className="mt-3 space-y-2">
         {order.items.map((item) => {
           const done = isItemDone(item);
@@ -234,6 +292,12 @@ export default function PedidosPage() {
             }
             onAdd={openAdd}
             onCancel={(current) => void cancelOrder(current)}
+            onTable={(current) =>
+              setOrders((prev) =>
+                prev.map((row) => (row.id === current.id ? current : row)),
+              )
+            }
+            onError={setError}
           />
         ))}
       </div>
