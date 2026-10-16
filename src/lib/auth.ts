@@ -14,7 +14,7 @@ export type SessionUser = {
   id: string;
   email: string;
   fullName: string;
-  role: "admin" | "mesero" | "cliente";
+  role: "admin" | "mesero" | "cliente" | "pendiente";
 };
 
 const STORAGE_KEY = "rutadelsabor.session";
@@ -24,9 +24,16 @@ export function saveSession(token: string, user: SessionUser) {
 }
 
 export function postLoginPath(role: SessionUser["role"]): string {
+  if (role === "pendiente") return "/esperando";
   if (role === "mesero") return "/panel/pedidos";
   if (role === "admin") return "/panel";
   return "/";
+}
+
+export function saveSessionUser(user: SessionUser) {
+  const current = readSession();
+  if (!current) return;
+  saveSession(current.token, user);
 }
 
 export function clearSession() {
