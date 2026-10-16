@@ -1,3 +1,4 @@
+import { API_URL, readSession } from "@/lib/auth";
 import { itemTimerStart, pendingUnits, type Order } from "@/features/orders/types";
 
 const VOICE_KEY = "kds-voice";
@@ -15,8 +16,7 @@ const NUMBERS = [
   "diez",
 ];
 
-const queue: string[] = [];
-let draining = false;
+let playback: Promise<void> = Promise.resolve();
 
 function feminine(name: string): boolean {
   return /gaseosa|sopa|fritada|corvina|tilapia|porci[oó]n|costilla|menestra|parrillada|salchipapa/i.test(
@@ -54,11 +54,13 @@ export function addedPhrase(items: { quantity: number; name: string }[]): string
 
 export function nudgeFallback(minutes: number, dishes: string[]): string {
   const list = joinSpanish(dishes);
-  const one = dishes.length === 1 && /^(un|una)\b/i.test(dishes[0] ?? "");
-  const verb = one ? "Falta" : "Faltan";
-  if (minutes >= 30) return `Urgente. Llevan ${minutes} minutos. ${verb} ${list}.`;
-  if (minutes >= 20) return `Apúrense. Llevan ${minutes} minutos. ${verb} ${list}.`;
-  return `Atención. Llevan ${minutes} minutos. ${verb} ${list}.`;
+  if (minutes >= 15) {
+    return `Qué fue con ${list}. Ya van ${minutes} minutos y los clientes están con hambre.`;
+  }
+  if (minutes >= 10) {
+    return `Chuta, ${list} lleva ${minutes} minutos. Ya toca moverse.`;
+  }
+  return `Pilas con ${list}, porfa. La mesa está esperando.`;
 }
 
 export function voiceEnabled(): boolean {
@@ -92,29 +94,60 @@ function pickVoice(): SpeechSynthesisVoice | null {
   return spanish.sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
-function drain() {
-  if (draining || queue.length === 0 || !window.speechSynthesis) return;
-  const text = queue.shift();
-  if (!text) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "es-MX";
-  const voice = pickVoice();
-  if (voice) utterance.voice = voice;
-  utterance.rate = 0.92;
-  draining = true;
-  const next = () => {
-    draining = false;
-    drain();
-  };
-  utterance.onend = next;
-  utterance.onerror = next;
-  window.speechSynthesis.speak(utterance);
+function speakWithBrowser(text: string): Promise<void> {
+  if (!window.speechSynthesis) return Promise.resolve();
+  return new Promise((resolve) => {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "es-MX";
+    const voice = pickVoice();
+    if (voice) utterance.voice = voice;
+    utterance.rate = 0.92;
+    utterance.onend = () => resolve();
+    utterance.onerror = () => resolve();
+    window.speechSynthesis.speak(utterance);
+  });
+}
+
+function playBlob(blob: Blob): Promise<void> {
+  const url = URL.createObjectURL(blob);
+  const audio = new Audio(url);
+  return new Promise((resolve) => {
+    const done = () => {
+      URL.revokeObjectURL(url);
+      resolve();
+    };
+    audio.onended = done;
+    audio.onerror = done;
+    void audio.play().catch(done);
+  });
+}
+
+async function speakWithLorenzo(text: string): Promise<void> {
+  const token = readSession()?.token;
+  const response = await fetch(`${API_URL}/api/kitchen/speak`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) throw new Error("sin voz");
+  const blob = await response.blob();
+  if (blob.size < 500) throw new Error("audio corto");
+  await playBlob(blob);
 }
 
 export function speak(text: string) {
-  if (!voiceEnabled() || !text.trim() || !window.speechSynthesis) return;
-  queue.push(text.trim());
-  drain();
+  const line = text.trim();
+  if (!voiceEnabled() || !line) return;
+  playback = playback.then(async () => {
+    try {
+      await speakWithLorenzo(line);
+    } catch {
+      await speakWithBrowser(line);
+    }
+  });
 }
 
 /** Resumen de lo que cocina aún no despacha, con la cantidad de cada plato. */
@@ -141,14 +174,12 @@ export function enableVoice(): boolean {
   } catch {
     return false;
   }
-  window.speechSynthesis.cancel();
-  queue.length = 0;
-  draining = false;
-  const utterance = new SpeechSynthesisUtterance("Voz de cocina activada.");
-  utterance.lang = "es-MX";
-  const voice = pickVoice();
-  if (voice) utterance.voice = voice;
-  window.speechSynthesis.speak(utterance);
+  const unlock = new Audio(
+    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=",
+  );
+  void unlock.play().catch(() => undefined);
+  playback = Promise.resolve();
+  speak("Voz de cocina activada.");
   return true;
 }
 
@@ -201,8 +232,8 @@ export function addedItems(
   return added;
 }
 
-export function crossedNudge(minutes: number, spoken: Set<number>): 10 | 20 | 30 | null {
-  const levels = [30, 20, 10] as const;
+export function crossedNudge(minutes: number, spoken: Set<number>): 5 | 10 | 15 | null {
+  const levels = [15, 10, 5] as const;
   for (const level of levels) {
     if (minutes >= level && !spoken.has(level)) return level;
   }
