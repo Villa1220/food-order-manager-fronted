@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import {
   ACTIVE_STATUSES,
+  dailyTicketNumber,
   formatElapsed,
   isItemDone,
   itemTimerStart,
@@ -39,8 +40,13 @@ function OrderCard({
   const ready = isOrderReady(order);
   return (
     <article className="rounded-xl border border-border-subtle bg-surface p-4 text-sm">
-      <div className="flex items-center justify-between gap-2">
-        <p className="font-bold">{order.order_code}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="flex min-w-0 items-baseline gap-2">
+          <span className="font-display text-2xl font-black tabular-nums leading-none text-brand-600">
+            {dailyTicketNumber(order.order_code)}
+          </span>
+          <span className="truncate text-xs text-foreground/45">{order.order_code}</span>
+        </p>
         <span
           className={`rounded-full px-2 py-0.5 text-xs font-bold ${
             ready ? STATUS_BADGE.listo : STATUS_BADGE.recibido
@@ -197,8 +203,14 @@ export default function PedidosPage() {
   const activeOrders = orders.filter((o) =>
     (ACTIVE_STATUSES as readonly string[]).includes(o.status),
   );
-  const pendingOrders = activeOrders.filter((order) => !isOrderReady(order));
-  const readyOrders = activeOrders.filter((order) => isOrderReady(order));
+  const byKitchenOrder = (a: Order, b: Order) =>
+    new Date(a.received_at).getTime() - new Date(b.received_at).getTime();
+  const pendingOrders = activeOrders
+    .filter((order) => !isOrderReady(order))
+    .sort(byKitchenOrder);
+  const readyOrders = activeOrders
+    .filter((order) => isOrderReady(order))
+    .sort(byKitchenOrder);
 
   function openAdd(order: Order) {
     setError(null);
