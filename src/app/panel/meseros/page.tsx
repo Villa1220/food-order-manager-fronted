@@ -1,5 +1,7 @@
-import PlaceholderPage from "@/features/staff/PlaceholderPage";
+"use client";
 
-export default function MeserosPage() {
-  return <PlaceholderPage title="Meseros" />;
+import MeserosPage from "@/features/staff/MeserosPage";
+
+export default function Page() {
+  return <MeserosPage />;
 }

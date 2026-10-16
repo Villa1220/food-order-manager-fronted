@@ -89,3 +89,14 @@ body {
   color: var(--foreground);
   transition: background-color 0.2s ease, color 0.2s ease;
 }
+
+/* En escritorio la foto del menú no ocupa toda la ventana. En el celular se deja el tamaño actual. */
+@media (min-width: 768px) {
+  .menu-lightbox .yarl__slide_image {
+    width: auto !important;
+    height: auto !important;
+    max-width: min(70vw, 860px);
+    max-height: min(68vh, 640px);
+    object-fit: contain;
+  }
+}
