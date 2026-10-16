@@ -25,6 +25,7 @@ type Props = {
 
 export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
+  const searchCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
@@ -105,7 +106,24 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
     [cart],
   );
 
+  function openSearch() {
+    if (searchCloseTimer.current) {
+      clearTimeout(searchCloseTimer.current);
+      searchCloseTimer.current = null;
+    }
+    setSearchOpen(true);
+  }
+
+  function closeSearchSoon() {
+    if (searchCloseTimer.current) clearTimeout(searchCloseTimer.current);
+    searchCloseTimer.current = setTimeout(() => {
+      searchCloseTimer.current = null;
+      if (document.activeElement !== searchRef.current) setSearchOpen(false);
+    }, 200);
+  }
+
   function reset() {
+    if (searchCloseTimer.current) clearTimeout(searchCloseTimer.current);
     setQuery("");
     setSearchOpen(false);
     setCart([]);
@@ -254,11 +272,12 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
               autoCapitalize="off"
               spellCheck={false}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setSearchOpen(true)}
-              onBlur={() => {
-                window.setTimeout(() => setSearchOpen(false), 180);
+              onChange={(e) => {
+                setQuery(e.target.value);
+                openSearch();
               }}
+              onFocus={openSearch}
+              onBlur={closeSearchSoon}
               placeholder="Escribe el nombre del plato…"
               className="w-full rounded-xl border border-border-subtle bg-background py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-400"
             />
