@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, Search, Send, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
-import { cn } from "@/lib/utils";
 import type { Order } from "@/features/orders/types";
 
 export type SearchableItem = {
@@ -27,6 +26,7 @@ type Props = {
 export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
   const searchRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [results, setResults] = useState<SearchableItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,9 +40,9 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
 
   useEffect(() => {
     if (!open) return;
-    const t = setTimeout(() => searchRef.current?.focus(), 50);
-    return () => clearTimeout(t);
-  }, [open, addingTo?.id]);
+    setTableNumber(addingTo?.table_number ?? "");
+    setSearchOpen(false);
+  }, [open, addingTo?.id, addingTo?.table_number]);
 
   useEffect(() => {
     if (!open) {
@@ -107,6 +107,7 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
 
   function reset() {
     setQuery("");
+    setSearchOpen(false);
     setCart([]);
     setTableNumber("");
     setError(null);
@@ -130,7 +131,7 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
       return [...prev, { item, quantity: 1, notes: "" }];
     });
     setQuery("");
-    searchRef.current?.focus();
+    setSearchOpen(false);
   }
 
   function changeQty(itemId: number, delta: number) {
@@ -171,6 +172,13 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
             method: "POST",
             body: JSON.stringify(payload),
           });
+      if (addingTo && tableNumber.trim() !== (addingTo.table_number ?? "")) {
+        const patched = await apiFetch<{ order: Order }>(`/api/orders/${addingTo.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({ table_number: tableNumber.trim() }),
+        });
+        data.order = patched.order;
+      }
       reset();
       onSaved(data.order);
     } catch (err) {
@@ -247,12 +255,17 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
               spellCheck={false}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setSearchOpen(true)}
+              onBlur={() => {
+                window.setTimeout(() => setSearchOpen(false), 180);
+              }}
               placeholder="Escribe el nombre del plato…"
               className="w-full rounded-xl border border-border-subtle bg-background py-2.5 pl-10 pr-3 text-sm outline-none focus:border-brand-400"
             />
           </label>
 
-          <ul className="mt-3 max-h-48 min-h-28 shrink-0 space-y-1 overflow-y-auto">
+          {searchOpen ? (
+          <ul className="mt-2 max-h-28 shrink-0 space-y-1 overflow-y-auto">
             {loading ? (
               <li className="px-2 py-3 text-sm text-foreground/40">Buscando…</li>
             ) : results.length === 0 ? (
@@ -267,6 +280,7 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
                   <button
                     type="button"
                     disabled={!item.available}
+                    onPointerDown={(event) => event.preventDefault()}
                     onClick={() => addToCart(item)}
                     className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-brand-50 disabled:opacity-40"
                   >
@@ -285,8 +299,27 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
               ))
             )}
           </ul>
+          ) : null}
 
           <div className="mt-4 min-h-0 flex-1 overflow-y-auto border-t border-border-subtle pt-4">
+            <label className="mb-4 block text-sm">
+              <span className="mb-1 block text-foreground/60">Mesa</span>
+              <input
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                onFocus={(event) => {
+                  window.setTimeout(() => {
+                    event.target.scrollIntoView({ block: "center" });
+                  }, 280);
+                }}
+                name="mesa"
+                inputMode="numeric"
+                enterKeyHint="done"
+                autoComplete="off"
+                placeholder="Ej. 4"
+                className="w-full rounded-lg border border-border-subtle bg-background px-3 py-2"
+              />
+            </label>
             <h3 className="text-xs font-bold uppercase tracking-wide text-foreground/50">
               Comanda
             </h3>
@@ -349,30 +382,7 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
           </div>
         </div>
 
-        <footer
-          className={cn(
-            "space-y-3 border-t border-border-subtle px-5 py-4",
-            keyboardInset > 0 && "hidden",
-          )}
-        >
-          {isAdd ? (
-            <p className="text-sm text-foreground/60">
-              Mesa {addingTo?.table_number ?? "—"} · se suma a la comanda ya enviada.
-            </p>
-          ) : (
-            <label className="block text-sm">
-              <span className="mb-1 block text-foreground/60">Mesa</span>
-              <input
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-                name="mesa"
-                inputMode="numeric"
-                autoComplete="off"
-                placeholder="Ej. 4"
-                className="w-full rounded-lg border border-border-subtle bg-background px-3 py-2"
-              />
-            </label>
-          )}
+        <footer className="space-y-3 border-t border-border-subtle px-5 py-4">
           <div className="flex items-center justify-between text-sm font-bold">
             <span>{isAdd ? "A agregar" : "Total"}</span>
             <span>${total.toFixed(2)}</span>
