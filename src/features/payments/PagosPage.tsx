@@ -62,11 +62,15 @@ function remaining(item: BillItem): number {
   return item.quantity - Number(item.paid_qty);
 }
 
+const CONTAINER_PRICE = 0.25;
+const CONTAINER_NAME = "Contenedor para llevar";
+
 export default function PagosPage() {
   const [orders, setOrders] = useState<OpenOrder[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [detail, setDetail] = useState<Detail | null>(null);
   const [draft, setDraft] = useState<Record<number, number>>({});
+  const [containers, setContainers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,6 +85,7 @@ export default function PagosPage() {
     const data = await apiFetch<Detail>(`/api/payments/orders/${orderId}`);
     setDetail(data);
     setDraft({});
+    setContainers(0);
   }, []);
 
   useEffect(() => {
@@ -123,10 +128,12 @@ export default function PagosPage() {
       if (quantity < 1) return [];
       return [{ item, quantity, total: Number(item.unit_price) * quantity }];
     }) ?? [];
-  const draftTotal = draftLines.reduce((sum, line) => sum + line.total, 0);
+  const containerTotal = containers * CONTAINER_PRICE;
+  const draftTotal = draftLines.reduce((sum, line) => sum + line.total, 0) + containerTotal;
+  const canCharge = draftLines.length > 0 || containers > 0;
 
   async function charge(method: "efectivo" | "transferencia") {
-    if (!detail || draftLines.length === 0) return;
+    if (!detail || !canCharge) return;
     setPaying(true);
     setError(null);
     try {
@@ -139,6 +146,7 @@ export default function PagosPage() {
             order_item_id: line.item.id,
             quantity: line.quantity,
           })),
+          container_count: containers,
         }),
       });
       downloadReceipt(saved.payment);
@@ -172,8 +180,9 @@ export default function PagosPage() {
     <div className="pb-24">
       <h1 className="font-display text-4xl font-black italic text-brand-600">Pagos</h1>
       <p className="mt-1 max-w-xl text-sm text-foreground/60">
-        Separa la cuenta por platos y cobra en efectivo o transferencia. El
-        recibo se descarga en PDF. Los precios ya incluyen IVA.
+        Separa la cuenta por platos, suma contenedores para llevar si hace falta
+        y cobra en efectivo o transferencia. El recibo se descarga en PDF. Los
+        precios ya incluyen IVA.
       </p>
 
       {error ? (
@@ -285,15 +294,45 @@ export default function PagosPage() {
                     );
                   })}
                 </ul>
+                <div className="mt-4 flex items-center gap-3 border-t border-border-subtle pt-4">
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold">{CONTAINER_NAME}</p>
+                    <p className="text-xs text-foreground/50">
+                      {money(CONTAINER_PRICE)} cada uno
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setContainers((count) => Math.max(0, count - 1))}
+                      disabled={containers < 1}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-subtle disabled:opacity-30"
+                      aria-label="Quitar un contenedor"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="w-6 text-center text-sm font-bold">{containers}</span>
+                    <button
+                      type="button"
+                      onClick={() => setContainers((count) => Math.min(40, count + 1))}
+                      disabled={containers >= 40}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg border border-border-subtle disabled:opacity-30"
+                      aria-label="Agregar un contenedor"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="flex flex-col rounded-2xl border border-border-subtle bg-surface p-4">
                 <h3 className="text-sm font-bold uppercase tracking-wide text-foreground/50">
                   Esta cuenta
                 </h3>
-                {draftLines.length === 0 ? (
+                {!canCharge ? (
                   <p className="mt-3 text-sm text-foreground/50">
-                    Suma platos con + o usa «Toda la cuenta».
+                    Suma platos con + o usa «Toda la cuenta». Los contenedores se
+                    agregan aparte.
                   </p>
                 ) : (
                   <ul className="mt-3 space-y-2 text-sm">
@@ -305,6 +344,14 @@ export default function PagosPage() {
                         <span>{money(line.total)}</span>
                       </li>
                     ))}
+                    {containers > 0 ? (
+                      <li className="flex justify-between gap-3">
+                        <span>
+                          {containers} × {CONTAINER_NAME}
+                        </span>
+                        <span>{money(containerTotal)}</span>
+                      </li>
+                    ) : null}
                   </ul>
                 )}
                 <div className="mt-4 border-t border-border-subtle pt-3">
@@ -317,7 +364,7 @@ export default function PagosPage() {
                 <div className="mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    disabled={paying || draftLines.length === 0}
+                    disabled={paying || !canCharge}
                     onClick={() => void charge("efectivo")}
                     className="inline-flex items-center justify-center gap-1 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
                   >
@@ -326,7 +373,7 @@ export default function PagosPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={paying || draftLines.length === 0}
+                    disabled={paying || !canCharge}
                     onClick={() => void charge("transferencia")}
                     className="rounded-lg border border-brand-600 px-3 py-2 text-sm font-semibold text-brand-700 disabled:opacity-40"
                   >
