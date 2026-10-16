@@ -232,8 +232,13 @@ export function addedItems(
   return added;
 }
 
-export function crossedNudge(minutes: number, spoken: Set<number>): 5 | 10 | 15 | null {
-  const levels = [15, 10, 5] as const;
+export const NUDGE_MINUTES = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60] as const;
+
+export function crossedNudge(
+  minutes: number,
+  spoken: Set<number>,
+): (typeof NUDGE_MINUTES)[number] | null {
+  const levels = [...NUDGE_MINUTES].reverse();
   for (const level of levels) {
     if (minutes >= level && !spoken.has(level)) return level;
   }
