@@ -295,6 +295,7 @@ export function MenuSection() {
       </AnimatePresence>
 
       <Lightbox
+        className="menu-lightbox"
         open={lightboxIndex !== null}
         close={() => setLightboxIndex(null)}
         index={lightboxIndex ?? 0}
