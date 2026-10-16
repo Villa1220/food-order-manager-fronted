@@ -31,12 +31,20 @@ export function itemPhrase(quantity: number, name: string): string {
   return `${word} ${name}`;
 }
 
-export function newOrderPhrase(order: Order): string {
+function joinSpanish(parts: string[]): string {
+  if (parts.length <= 1) return parts[0] ?? "";
+  return `${parts.slice(0, -1).join(", ")} y ${parts[parts.length - 1]}`;
+}
+
+function askedFor(items: { quantity: number; name: string }[]): string {
+  return `Pidieron ${joinSpanish(items.map((item) => itemPhrase(item.quantity, item.name)))}.`;
+}
+
+export function announceNewOrder(order: Order) {
   const via = order.channel === "whatsapp" ? "por WhatsApp" : "en mesa";
-  const dishes = order.items
-    .map((item) => itemPhrase(item.quantity, item.name))
-    .join(". ");
-  return `Pedido nuevo ${via}. ${dishes}.`;
+  const asked = askedFor(order.items);
+  speak(`Pedido nuevo ${via}. ${asked}`);
+  speak(`Repito el pedido. ${asked}`);
 }
 
 export function addedPhrase(items: { quantity: number; name: string }[]): string {
@@ -45,10 +53,12 @@ export function addedPhrase(items: { quantity: number; name: string }[]): string
 }
 
 export function nudgeFallback(minutes: number, dishes: string[]): string {
-  const list = dishes.join(" y ");
-  if (minutes >= 30) return `Urgente. Llevan ${minutes} minutos. Faltan ${list}.`;
-  if (minutes >= 20) return `Apúrense. Llevan ${minutes} minutos. Faltan ${list}.`;
-  return `Atención. Llevan ${minutes} minutos. Faltan ${list}.`;
+  const list = joinSpanish(dishes);
+  const one = dishes.length === 1 && /^(un|una)\b/i.test(dishes[0] ?? "");
+  const verb = one ? "Falta" : "Faltan";
+  if (minutes >= 30) return `Urgente. Llevan ${minutes} minutos. ${verb} ${list}.`;
+  if (minutes >= 20) return `Apúrense. Llevan ${minutes} minutos. ${verb} ${list}.`;
+  return `Atención. Llevan ${minutes} minutos. ${verb} ${list}.`;
 }
 
 export function voiceEnabled(): boolean {
@@ -59,15 +69,27 @@ export function voiceEnabled(): boolean {
   }
 }
 
+function availableVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === "undefined" || !window.speechSynthesis) return [];
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length > 0) return voices;
+  return [];
+}
+
 function pickVoice(): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis?.getVoices() ?? [];
+  const voices = availableVoices();
   const spanish = voices.filter((voice) => voice.lang.toLowerCase().startsWith("es"));
-  return (
-    spanish.find((voice) => voice.lang.toLowerCase().startsWith("es-ec")) ??
-    spanish.find((voice) => voice.lang.toLowerCase().startsWith("es-mx")) ??
-    spanish[0] ??
-    null
-  );
+  const score = (voice: SpeechSynthesisVoice) => {
+    const name = voice.name.toLowerCase();
+    let points = 0;
+    if (name.includes("natural") || name.includes("neural")) points += 50;
+    if (name.includes("google")) points += 40;
+    if (name.includes("dalia") || name.includes("elvira") || name.includes("alvaro")) points += 30;
+    if (voice.lang.toLowerCase().startsWith("es-mx")) points += 8;
+    if (voice.lang.toLowerCase().startsWith("es-ec")) points += 8;
+    return points;
+  };
+  return spanish.sort((a, b) => score(b) - score(a))[0] ?? null;
 }
 
 function drain() {
@@ -75,10 +97,10 @@ function drain() {
   const text = queue.shift();
   if (!text) return;
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "es-EC";
+  utterance.lang = "es-MX";
   const voice = pickVoice();
   if (voice) utterance.voice = voice;
-  utterance.rate = 1;
+  utterance.rate = 0.92;
   draining = true;
   const next = () => {
     draining = false;
@@ -95,12 +117,7 @@ export function speak(text: string) {
   drain();
 }
 
-export function speakTwice(text: string) {
-  speak(text);
-  speak(text);
-}
-
-/** Resumen de lo que cocina aún no despacha, sumando todas las comandas. */
+/** Resumen de lo que cocina aún no despacha, con la cantidad de cada plato. */
 export function dispatchBoardPhrase(orders: Order[]): string | null {
   const totals = new Map<string, number>();
   for (const order of orders) {
@@ -112,9 +129,8 @@ export function dispatchBoardPhrase(orders: Order[]): string | null {
   if (totals.size === 0) return null;
   const list = [...totals.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
-    .map(([name, quantity]) => itemPhrase(quantity, name))
-    .join(". ");
-  return `Recuerden que tenemos que despachar lo siguiente. ${list}.`;
+    .map(([name, quantity]) => itemPhrase(quantity, name));
+  return `Recuerden que tenemos que despachar lo siguiente. ${joinSpanish(list)}.`;
 }
 
 /** El navegador solo habla después de un toque. Esta función debe llamarse desde un click. */
@@ -129,7 +145,7 @@ export function enableVoice(): boolean {
   queue.length = 0;
   draining = false;
   const utterance = new SpeechSynthesisUtterance("Voz de cocina activada.");
-  utterance.lang = "es-EC";
+  utterance.lang = "es-MX";
   const voice = pickVoice();
   if (voice) utterance.voice = voice;
   window.speechSynthesis.speak(utterance);

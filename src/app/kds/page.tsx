@@ -21,16 +21,15 @@ import { cn } from "@/lib/utils";
 import {
   addedItems,
   addedPhrase,
+  announceNewOrder,
   crossedNudge,
   dispatchBoardPhrase,
   enableVoice,
-  newOrderPhrase,
   nudgeFallback,
   oldestPendingMinutes,
   pendingDishes,
   snapshotItems,
   speak,
-  speakTwice,
   voiceEnabled,
   type ItemSnapshot,
 } from "@/app/kds/announce";
@@ -183,7 +182,7 @@ function KdsBoard() {
     for (const order of orders) {
       const previous = seen.orders.get(order.id);
       if (!previous) {
-        speakTwice(newOrderPhrase(order));
+        announceNewOrder(order);
         seen.orders.set(order.id, { items: snapshotItems(order), nudges: new Set() });
         continue;
       }
@@ -208,11 +207,10 @@ function KdsBoard() {
         }
         const dishes = pendingDishes(order, level, now);
         if (dishes.length === 0) continue;
-        const names = dishes.map((dish) => dish.name);
         const phrases = dishes.map((dish) => dish.phrase);
         void apiFetch<{ phrase: string }>("/api/kitchen/nudge", {
           method: "POST",
-          body: JSON.stringify({ minutes: level, dishes: names }),
+          body: JSON.stringify({ minutes: level, dishes: phrases }),
         })
           .then((data) => speak(data.phrase))
           .catch(() => speak(nudgeFallback(level, phrases)));
