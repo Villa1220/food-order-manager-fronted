@@ -82,6 +82,79 @@ function MesaField({
   );
 }
 
+function ItemNote({
+  order,
+  item,
+  onSaved,
+  onError,
+}: {
+  order: Order;
+  item: OrderItem;
+  onSaved: (order: Order) => void;
+  onError: (message: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(item.notes ?? "");
+
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      setValue(item.notes ?? "");
+    }
+  }, [item.id, item.notes]);
+
+  async function save() {
+    const next = value.trim();
+    if (next === (item.notes ?? "")) {
+      setOpen(false);
+      return;
+    }
+    try {
+      const data = await apiFetch<{ order: Order }>(
+        `/api/orders/${order.id}/items/${item.id}/notes`,
+        { method: "PATCH", body: JSON.stringify({ notes: next }) },
+      );
+      onSaved(data.order);
+      setOpen(false);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "No se pudo guardar el detalle");
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className={cn(
+          "mt-0.5 block text-left text-[11px] leading-tight",
+          item.notes
+            ? "italic text-foreground/55"
+            : "text-foreground/35 hover:text-brand-700",
+        )}
+      >
+        {item.notes || "Detalle"}
+      </button>
+    );
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      autoFocus
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      onBlur={() => void save()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+      }}
+      placeholder="Sin ají, término medio…"
+      aria-label={`Detalle de ${item.name}`}
+      className="mt-1 w-full rounded-md border border-border-subtle bg-background px-2 py-1 text-xs outline-none focus:border-brand-400"
+    />
+  );
+}
+
 function OrderCard({
   order,
   onToggleItem,
@@ -157,11 +230,12 @@ function OrderCard({
                 <span className={done ? "line-through" : undefined}>
                   {item.quantity}× {item.name}
                 </span>
-                {item.notes ? (
-                  <span className="block text-xs italic text-foreground/50">
-                    {item.notes}
-                  </span>
-                ) : null}
+                <ItemNote
+                  order={order}
+                  item={item}
+                  onSaved={onTable}
+                  onError={onError}
+                />
               </span>
               <span
                 className={cn(
