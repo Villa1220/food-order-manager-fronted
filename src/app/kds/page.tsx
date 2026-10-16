@@ -504,7 +504,7 @@ function KdsBoard() {
                 </h2>
                 {pendingColumn ? (
                   <p className={cn("text-xs", light ? "text-ink/55" : "text-cream/55")}>
-                    Empieza por la derecha. El número vuelve a 1 cada día.
+                    Empieza por la izquierda. El número vuelve a 1 cada día.
                   </p>
                 ) : (
                   <p className={cn("text-xs", light ? "text-ink/45" : "text-cream/45")}>
@@ -519,7 +519,7 @@ function KdsBoard() {
               ) : (
                 <ul
                   className={cn(
-                    "flex flex-row-reverse gap-3",
+                    "flex gap-3",
                     pendingColumn
                       ? "min-h-0 flex-1 flex-wrap content-start items-start overflow-auto"
                       : "flex-nowrap overflow-x-auto pb-1",

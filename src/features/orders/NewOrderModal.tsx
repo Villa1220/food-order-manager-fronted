@@ -227,19 +227,14 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
           </button>
         </header>
 
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col px-5 py-4",
-            keyboardInset > 0 ? "overflow-hidden" : "overflow-y-auto",
-          )}
-        >
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-5 py-4">
           {error ? (
             <p className="mb-3 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-950/50 dark:text-red-300">
               {error}
             </p>
           ) : null}
 
-          <label className="relative block">
+          <label className="relative block shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
             <input
               ref={searchRef}
@@ -257,12 +252,7 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
             />
           </label>
 
-          <ul
-            className={cn(
-              "mt-3 space-y-1 overflow-y-auto",
-              keyboardInset > 0 ? "min-h-0 flex-1" : "max-h-48",
-            )}
-          >
+          <ul className="mt-3 max-h-48 min-h-28 shrink-0 space-y-1 overflow-y-auto">
             {loading ? (
               <li className="px-2 py-3 text-sm text-foreground/40">Buscando…</li>
             ) : results.length === 0 ? (
@@ -296,7 +286,7 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
             )}
           </ul>
 
-          <div className="mt-5 border-t border-border-subtle pt-4">
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto border-t border-border-subtle pt-4">
             <h3 className="text-xs font-bold uppercase tracking-wide text-foreground/50">
               Comanda
             </h3>
