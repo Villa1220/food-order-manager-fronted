@@ -17,6 +17,19 @@ const NUMBERS = [
 ];
 
 let playback: Promise<void> = Promise.resolve();
+let voiceOnMemory = false;
+let speaker: HTMLAudioElement | null = null;
+
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+
+function getSpeaker(): HTMLAudioElement {
+  if (!speaker) {
+    speaker = new Audio();
+    speaker.setAttribute("playsinline", "true");
+  }
+  return speaker;
+}
 
 function feminine(name: string): boolean {
   return /gaseosa|sopa|fritada|corvina|tilapia|porci[oó]n|costilla|menestra|parrillada|salchipapa/i.test(
@@ -64,6 +77,7 @@ export function nudgeFallback(minutes: number, dishes: string[]): string {
 }
 
 export function voiceEnabled(): boolean {
+  if (voiceOnMemory) return true;
   try {
     return sessionStorage.getItem(VOICE_KEY) === "1";
   } catch {
@@ -110,7 +124,8 @@ function speakWithBrowser(text: string): Promise<void> {
 
 function playBlob(blob: Blob): Promise<void> {
   const url = URL.createObjectURL(blob);
-  const audio = new Audio(url);
+  const audio = getSpeaker();
+  audio.src = url;
   return new Promise((resolve) => {
     const done = () => {
       URL.revokeObjectURL(url);
@@ -166,18 +181,17 @@ export function dispatchBoardPhrase(orders: Order[]): string | null {
   return `Recuerden que tenemos que despachar lo siguiente. ${joinSpanish(list)}.`;
 }
 
-/** El navegador solo habla después de un toque. Esta función debe llamarse desde un click. */
+/** El navegador solo suena después de un toque. Esta función debe llamarse desde un click. */
 export function enableVoice(): boolean {
-  if (!window.speechSynthesis) return false;
+  voiceOnMemory = true;
   try {
     sessionStorage.setItem(VOICE_KEY, "1");
   } catch {
-    return false;
+    // En algunas teles no se puede guardar. La voz queda activa en esta visita.
   }
-  const unlock = new Audio(
-    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=",
-  );
-  void unlock.play().catch(() => undefined);
+  const audio = getSpeaker();
+  audio.src = SILENT_WAV;
+  void audio.play().catch(() => undefined);
   playback = Promise.resolve();
   speak("Voz de cocina activada.");
   return true;
