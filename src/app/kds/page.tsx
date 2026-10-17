@@ -279,6 +279,35 @@ function KdsBoard() {
     };
   }, [loadOrders]);
 
+  useEffect(() => {
+    const heard = { after: null as number | null };
+    const pull = async () => {
+      try {
+        const path =
+          heard.after == null
+            ? "/api/kitchen/calls"
+            : `/api/kitchen/calls?after=${heard.after}`;
+        const data = await apiFetch<{
+          latest: number;
+          calls: { id: number; phrase: string }[];
+        }>(path);
+        if (heard.after == null) {
+          heard.after = data.latest;
+          return;
+        }
+        for (const call of data.calls) {
+          heard.after = call.id;
+          if (voiceOnRef.current && call.phrase) speak(call.phrase);
+        }
+      } catch {
+        // el siguiente ciclo vuelve a intentar
+      }
+    };
+    void pull();
+    const timer = setInterval(() => void pull(), 1500);
+    return () => clearInterval(timer);
+  }, []);
+
   function toggleLight() {
     const next = !light;
     setLight(next);
