@@ -7,6 +7,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   ChefHat,
   ClipboardList,
+  FileBarChart,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -33,6 +34,7 @@ const LINKS: {
   { href: "/panel/menu", label: "Menú", icon: UtensilsCrossed, adminOnly: true },
   { href: "/panel/meseros", label: "Meseros", icon: Users, adminOnly: true },
   { href: "/panel/pagos", label: "Pagos", icon: Wallet },
+  { href: "/panel/reportes", label: "Reportes", icon: FileBarChart },
 ];
 
 function isActive(pathname: string, href: string) {
