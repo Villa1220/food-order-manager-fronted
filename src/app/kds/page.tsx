@@ -215,7 +215,7 @@ function KdsBoard() {
       if (!voiceOnRef.current) return;
       const phrase = dispatchBoardPhrase(ordersRef.current);
       if (phrase) speak(phrase);
-    }, 3 * 60 * 1000);
+    }, 7 * 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 
