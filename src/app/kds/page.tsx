@@ -77,6 +77,21 @@ function kitchenTotals(orders: Order[]): { name: string; quantity: number }[] {
     .sort((a, b) => b.quantity - a.quantity || a.name.localeCompare(b.name, "es"));
 }
 
+function kitchenClock(now = new Date()): { time: string; period: string } {
+  const parts = new Intl.DateTimeFormat("es-EC", {
+    timeZone: "America/Guayaquil",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(now);
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return {
+    time: `${pick("hour")}:${pick("minute")}`,
+    period: pick("dayPeriod").replace(/\s+/g, "").toLowerCase(),
+  };
+}
+
 function timerTone(minutes: number, light: boolean, stopped: boolean) {
   if (stopped) {
     return light ? "bg-emerald-100 text-emerald-800" : "bg-emerald-500/20 text-emerald-300";
@@ -294,6 +309,7 @@ function KdsBoard() {
     order.items.some((item) => pendingUnits(item) > 0),
   ).length;
 
+  const clock = kitchenClock();
   const headerBtn = light
     ? "border-ink/15 text-ink/70 hover:border-brand-500 hover:text-brand-600"
     : "border-cream/20 text-cream/80 hover:border-gold-400 hover:text-gold-400";
@@ -308,17 +324,33 @@ function KdsBoard() {
     >
       <header
         className={cn(
-          "flex items-center justify-between border-b px-6 py-4",
+          "relative flex items-center justify-between border-b px-6 py-3",
           light ? "border-ink/10" : "border-cream/10",
         )}
       >
-        <div>
+        <div className="shrink-0">
           <p className="font-display text-2xl font-black italic">Cocina · KDS</p>
           <p className={cn("text-xs", light ? "text-ink/55" : "text-cream/60")}>
             {user?.fullName}
           </p>
         </div>
-        <div className="flex items-center gap-3 text-sm">
+        <p
+          className="pointer-events-none absolute inset-x-0 flex items-baseline justify-center gap-3"
+          aria-live="polite"
+        >
+          <span
+            className={cn(
+              "font-display text-6xl font-black tabular-nums leading-none tracking-tight sm:text-7xl",
+              light ? "text-ink" : "text-cream",
+            )}
+          >
+            {clock.time}
+          </span>
+          <span className="text-2xl font-bold uppercase tracking-wide text-gold-500">
+            {clock.period}
+          </span>
+        </p>
+        <div className="relative z-10 flex items-center gap-3 text-sm">
           <button
             type="button"
             onClick={() => setVoiceOn(enableVoice())}
