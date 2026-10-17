@@ -90,6 +90,16 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+.report-calendar .rdp-root {
+  --rdp-accent-color: #d14a04;
+  --rdp-accent-background-color: #fdf3ec;
+  --rdp-day-height: 42px;
+  --rdp-day-width: 42px;
+  --rdp-day_button-border-radius: 999px;
+  --rdp-selected-border: 2px solid #d14a04;
+  margin: 0;
+}
+
 /* En escritorio la foto del menú no ocupa toda la ventana. En el celular se deja el tamaño actual. */
 @media (min-width: 768px) {
   .menu-lightbox .yarl__slide_image {
