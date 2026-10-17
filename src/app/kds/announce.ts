@@ -67,7 +67,7 @@ export function addedPhrase(items: { quantity: number; name: string }[]): string
 
 export function nudgeFallback(minutes: number, dishes: string[]): string {
   const list = joinSpanish(dishes);
-  if (minutes >= 15) {
+  if (minutes >= 20) {
     return `Qué fue con ${list}. Ya van ${minutes} minutos y los clientes están con hambre.`;
   }
   if (minutes >= 10) {
@@ -246,7 +246,7 @@ export function addedItems(
   return added;
 }
 
-export const NUDGE_MINUTES = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 60] as const;
+export const NUDGE_MINUTES = [10, 20, 30, 40, 50, 60] as const;
 
 export function crossedNudge(
   minutes: number,
