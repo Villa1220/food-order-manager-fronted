@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, Volume2 } from "lucide-react";
+import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
 import {
@@ -162,6 +163,7 @@ function OrderCard({
   onCancel,
   onTable,
   onError,
+  onCall,
 }: {
   order: Order;
   onToggleItem: (order: Order, item: OrderItem, readyCount: number) => void;
@@ -169,6 +171,7 @@ function OrderCard({
   onCancel: (order: Order) => void;
   onTable: (order: Order) => void;
   onError: (message: string) => void;
+  onCall: (order: Order) => void;
 }) {
   const ready = isOrderReady(order);
   return (
@@ -180,12 +183,23 @@ function OrderCard({
           </span>
           <span className="truncate text-xs text-foreground/45">{order.order_code}</span>
         </p>
-        <span
-          className={`rounded-full px-2 py-0.5 text-xs font-bold ${
-            ready ? STATUS_BADGE.listo : STATUS_BADGE.recibido
-          }`}
-        >
-          {ready ? "Listo" : "Pendiente"}
+        <span className="flex shrink-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onCall(order)}
+            className="rounded-full p-1.5 text-foreground/35 hover:bg-brand-50 hover:text-brand-700"
+            aria-label="Hacer que cocina escuche este pedido"
+            title="Avisar a cocina"
+          >
+            <Volume2 className="h-4 w-4" />
+          </button>
+          <span
+            className={`rounded-full px-2 py-0.5 text-xs font-bold ${
+              ready ? STATUS_BADGE.listo : STATUS_BADGE.recibido
+            }`}
+          >
+            {ready ? "Listo" : "Pendiente"}
+          </span>
         </span>
       </div>
       <MesaField order={order} onSaved={onTable} onError={onError} />
@@ -320,6 +334,17 @@ export default function PedidosPage() {
     }
   }
 
+  async function callKitchen(order: Order) {
+    try {
+      await apiFetch(`/api/orders/${order.id}/call`, { method: "POST" });
+      toast.success("Cocina avisada", {
+        description: `Mesa ${order.table_number ?? "sin número"}`,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo avisar a cocina");
+    }
+  }
+
   async function cancelOrder(order: Order) {
     try {
       await apiFetch(`/api/orders/${order.id}/status`, {
@@ -372,6 +397,7 @@ export default function PedidosPage() {
               )
             }
             onError={setError}
+            onCall={(current) => void callKitchen(current)}
           />
         ))}
       </div>
