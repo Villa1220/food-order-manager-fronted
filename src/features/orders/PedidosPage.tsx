@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Plus, Trash2, Volume2 } from "lucide-react";
+import { Check, Plus, Trash2, Volume2, X } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
@@ -164,6 +164,7 @@ function OrderCard({
   onTable,
   onError,
   onCall,
+  onRemoveItem,
 }: {
   order: Order;
   onToggleItem: (order: Order, item: OrderItem, readyCount: number) => void;
@@ -172,6 +173,7 @@ function OrderCard({
   onTable: (order: Order) => void;
   onError: (message: string) => void;
   onCall: (order: Order) => void;
+  onRemoveItem: (order: Order, item: OrderItem) => void;
 }) {
   const ready = isOrderReady(order);
   return (
@@ -250,8 +252,19 @@ function OrderCard({
                 })}
               </span>
               <span className={cn("min-w-0 flex-1", done && "text-foreground/45")}>
-                <span className={done ? "line-through" : undefined}>
-                  {item.quantity}× {item.name}
+                <span className="flex items-center gap-1">
+                  <span className={done ? "line-through" : undefined}>
+                    {item.quantity}× {item.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveItem(order, item)}
+                    className="rounded-full p-0.5 text-foreground/30 hover:bg-red-50 hover:text-red-600"
+                    aria-label={`Quitar ${item.name}`}
+                    title="Quitar este plato"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </span>
                 <ItemNote
                   order={order}
@@ -336,6 +349,28 @@ export default function PedidosPage() {
     }
   }
 
+  async function removeItem(order: Order, item: OrderItem) {
+    if (!window.confirm(`¿Quitar ${item.name} de esta comanda?`)) return;
+    try {
+      const data = await apiFetch<{ order: Order; empty: boolean }>(
+        `/api/orders/${order.id}/items/${item.id}`,
+        { method: "DELETE" },
+      );
+      if (data.empty) {
+        setOrders((prev) => prev.filter((row) => row.id !== order.id));
+        toast.success("Pedido eliminado", {
+          description: "Era el único plato, así que se quitó la comanda.",
+        });
+      } else {
+        setOrders((prev) =>
+          prev.map((row) => (row.id === data.order.id ? data.order : row)),
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo quitar el plato");
+    }
+  }
+
   async function callKitchen(order: Order) {
     try {
       await apiFetch(`/api/orders/${order.id}/call`, { method: "POST" });
@@ -404,6 +439,7 @@ export default function PedidosPage() {
             }
             onError={setError}
             onCall={(current) => void callKitchen(current)}
+            onRemoveItem={(current, item) => void removeItem(current, item)}
           />
         ))}
       </div>
