@@ -23,6 +23,48 @@ const STATUS_BADGE = {
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
 };
 
+function askConfirm(title: string, description: string, confirmLabel: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    toast.custom(
+      (id) => (
+        <div className="w-[min(92vw,340px)] rounded-2xl border border-[#f7c29c] bg-[#faf6ef] p-4 text-[#2b1003] shadow-xl">
+          <p className="font-display text-xl font-black italic text-brand-700">{title}</p>
+          <p className="mt-1 text-sm leading-relaxed text-[#7c2d06]/80">{description}</p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                finish(false);
+                toast.dismiss(id);
+              }}
+              className="rounded-xl px-3 py-1.5 text-sm font-semibold text-[#7c2d06]"
+            >
+              Volver
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                finish(true);
+                toast.dismiss(id);
+              }}
+              className="rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white"
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: Infinity, onDismiss: () => finish(false) },
+    );
+  });
+}
+
 function isOrderReady(order: Order) {
   return order.items.length > 0 && order.items.every(isItemDone);
 }
@@ -350,7 +392,12 @@ export default function PedidosPage() {
   }
 
   async function removeItem(order: Order, item: OrderItem) {
-    if (!window.confirm(`¿Quitar ${item.name} de esta comanda?`)) return;
+    const accepted = await askConfirm(
+      "Quitar plato",
+      `¿Sacar ${item.name} de esta comanda?`,
+      "Quitar",
+    );
+    if (!accepted) return;
     try {
       const data = await apiFetch<{ order: Order; empty: boolean }>(
         `/api/orders/${order.id}/items/${item.id}`,
@@ -386,7 +433,12 @@ export default function PedidosPage() {
     const which = order.table_number
       ? `la mesa ${order.table_number}`
       : `el pedido ${dailyTicketNumber(order.order_code)}`;
-    if (!window.confirm(`¿Eliminar ${which}? Se quita de pedidos y de cocina.`)) return;
+    const accepted = await askConfirm(
+      "Eliminar pedido",
+      `¿Quitar ${which}? Sale de pedidos y de cocina.`,
+      "Eliminar",
+    );
+    if (!accepted) return;
     try {
       await apiFetch(`/api/orders/${order.id}/status`, {
         method: "PATCH",
