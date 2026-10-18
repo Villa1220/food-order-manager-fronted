@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Plus, Trash2, Volume2 } from "lucide-react";
+import { Check, Plus, Trash2, Volume2, X } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
@@ -22,6 +22,48 @@ const STATUS_BADGE = {
   listo:
     "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
 };
+
+function askConfirm(title: string, description: string, confirmLabel: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    toast.custom(
+      (id) => (
+        <div className="w-[min(92vw,340px)] rounded-2xl border border-[#f7c29c] bg-[#faf6ef] p-4 text-[#2b1003] shadow-xl">
+          <p className="font-display text-xl font-black italic text-brand-700">{title}</p>
+          <p className="mt-1 text-sm leading-relaxed text-[#7c2d06]/80">{description}</p>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                finish(false);
+                toast.dismiss(id);
+              }}
+              className="rounded-xl px-3 py-1.5 text-sm font-semibold text-[#7c2d06]"
+            >
+              Volver
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                finish(true);
+                toast.dismiss(id);
+              }}
+              className="rounded-xl bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white"
+            >
+              {confirmLabel}
+            </button>
+          </div>
+        </div>
+      ),
+      { duration: Infinity, onDismiss: () => finish(false) },
+    );
+  });
+}
 
 function isOrderReady(order: Order) {
   return order.items.length > 0 && order.items.every(isItemDone);
@@ -164,6 +206,7 @@ function OrderCard({
   onTable,
   onError,
   onCall,
+  onRemoveItem,
 }: {
   order: Order;
   onToggleItem: (order: Order, item: OrderItem, readyCount: number) => void;
@@ -172,6 +215,7 @@ function OrderCard({
   onTable: (order: Order) => void;
   onError: (message: string) => void;
   onCall: (order: Order) => void;
+  onRemoveItem: (order: Order, item: OrderItem) => void;
 }) {
   const ready = isOrderReady(order);
   return (
@@ -250,8 +294,19 @@ function OrderCard({
                 })}
               </span>
               <span className={cn("min-w-0 flex-1", done && "text-foreground/45")}>
-                <span className={done ? "line-through" : undefined}>
-                  {item.quantity}× {item.name}
+                <span className="flex items-center gap-1">
+                  <span className={done ? "line-through" : undefined}>
+                    {item.quantity}× {item.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveItem(order, item)}
+                    className="rounded-full p-0.5 text-foreground/30 hover:bg-red-50 hover:text-red-600"
+                    aria-label={`Quitar ${item.name}`}
+                    title="Quitar este plato"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </span>
                 <ItemNote
                   order={order}
@@ -336,6 +391,33 @@ export default function PedidosPage() {
     }
   }
 
+  async function removeItem(order: Order, item: OrderItem) {
+    const accepted = await askConfirm(
+      "Quitar plato",
+      `¿Sacar ${item.name} de esta comanda?`,
+      "Quitar",
+    );
+    if (!accepted) return;
+    try {
+      const data = await apiFetch<{ order: Order; empty: boolean }>(
+        `/api/orders/${order.id}/items/${item.id}`,
+        { method: "DELETE" },
+      );
+      if (data.empty) {
+        setOrders((prev) => prev.filter((row) => row.id !== order.id));
+        toast.success("Pedido eliminado", {
+          description: "Era el único plato, así que se quitó la comanda.",
+        });
+      } else {
+        setOrders((prev) =>
+          prev.map((row) => (row.id === data.order.id ? data.order : row)),
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo quitar el plato");
+    }
+  }
+
   async function callKitchen(order: Order) {
     try {
       await apiFetch(`/api/orders/${order.id}/call`, { method: "POST" });
@@ -351,7 +433,12 @@ export default function PedidosPage() {
     const which = order.table_number
       ? `la mesa ${order.table_number}`
       : `el pedido ${dailyTicketNumber(order.order_code)}`;
-    if (!window.confirm(`¿Eliminar ${which}? Se quita de pedidos y de cocina.`)) return;
+    const accepted = await askConfirm(
+      "Eliminar pedido",
+      `¿Quitar ${which}? Sale de pedidos y de cocina.`,
+      "Eliminar",
+    );
+    if (!accepted) return;
     try {
       await apiFetch(`/api/orders/${order.id}/status`, {
         method: "PATCH",
@@ -404,6 +491,7 @@ export default function PedidosPage() {
             }
             onError={setError}
             onCall={(current) => void callKitchen(current)}
+            onRemoveItem={(current, item) => void removeItem(current, item)}
           />
         ))}
       </div>
