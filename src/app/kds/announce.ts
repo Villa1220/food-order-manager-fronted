@@ -49,8 +49,15 @@ function joinSpanish(parts: string[]): string {
   return `${parts.slice(0, -1).join(", ")} y ${parts[parts.length - 1]}`;
 }
 
-function askedFor(items: { quantity: number; name: string }[]): string {
-  return `Pidieron ${joinSpanish(items.map((item) => itemPhrase(item.quantity, item.name)))}.`;
+function withDetail(phrase: string, notes?: string | null): string {
+  const detail = notes?.trim();
+  return detail ? `${phrase}, ${detail}` : phrase;
+}
+
+function askedFor(items: { quantity: number; name: string; notes?: string | null }[]): string {
+  return `Pidieron ${joinSpanish(
+    items.map((item) => withDetail(itemPhrase(item.quantity, item.name), item.notes)),
+  )}.`;
 }
 
 export function announceNewOrder(order: Order) {
@@ -60,8 +67,12 @@ export function announceNewOrder(order: Order) {
   speak(`Repito el pedido. ${asked}`);
 }
 
-export function addedPhrase(items: { quantity: number; name: string }[]): string {
-  const dishes = items.map((item) => itemPhrase(item.quantity, item.name)).join(". ");
+export function addedPhrase(
+  items: { quantity: number; name: string; notes?: string | null }[],
+): string {
+  const dishes = items
+    .map((item) => withDetail(itemPhrase(item.quantity, item.name), item.notes))
+    .join(". ");
   return `Agregaron al pedido. ${dishes}.`;
 }
 
@@ -235,12 +246,16 @@ export function snapshotItems(order: Order): ItemSnapshot {
 export function addedItems(
   previous: ItemSnapshot,
   order: Order,
-): { quantity: number; name: string }[] {
-  const added: { quantity: number; name: string }[] = [];
+): { quantity: number; name: string; notes: string | null }[] {
+  const added: { quantity: number; name: string; notes: string | null }[] = [];
   for (const item of order.items) {
     const before = previous.get(item.id) ?? 0;
     if (item.quantity > before) {
-      added.push({ quantity: item.quantity - before, name: item.name });
+      added.push({
+        quantity: item.quantity - before,
+        name: item.name,
+        notes: item.notes,
+      });
     }
   }
   return added;

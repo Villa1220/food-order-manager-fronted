@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Plus, Volume2 } from "lucide-react";
+import { Check, Plus, Trash2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
@@ -193,6 +193,15 @@ function OrderCard({
           >
             <Volume2 className="h-4 w-4" />
           </button>
+          <button
+            type="button"
+            onClick={() => onCancel(order)}
+            className="rounded-full p-1.5 text-foreground/30 hover:bg-red-50 hover:text-red-600"
+            aria-label="Eliminar pedido"
+            title="Eliminar pedido"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
           <span
             className={`rounded-full px-2 py-0.5 text-xs font-bold ${
               ready ? STATUS_BADGE.listo : STATUS_BADGE.recibido
@@ -272,13 +281,6 @@ function OrderCard({
           <Plus className="h-3.5 w-3.5" />
           Agregar
         </button>
-        <button
-          type="button"
-          onClick={() => onCancel(order)}
-          className="rounded-lg border border-border-subtle px-3 py-1.5 text-xs text-foreground/60 hover:border-red-400 hover:text-red-500"
-        >
-          Cancelar
-        </button>
       </div>
     </article>
   );
@@ -346,6 +348,10 @@ export default function PedidosPage() {
   }
 
   async function cancelOrder(order: Order) {
+    const which = order.table_number
+      ? `la mesa ${order.table_number}`
+      : `el pedido ${dailyTicketNumber(order.order_code)}`;
+    if (!window.confirm(`¿Eliminar ${which}? Se quita de pedidos y de cocina.`)) return;
     try {
       await apiFetch(`/api/orders/${order.id}/status`, {
         method: "PATCH",

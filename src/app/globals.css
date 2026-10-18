@@ -100,13 +100,13 @@ body {
   margin: 0;
 }
 
-/* En escritorio la foto del menú no ocupa toda la ventana. En el celular se deja el tamaño actual. */
+/* En escritorio la foto ampliada no ocupa toda la ventana. En el celular se deja el tamaño actual. */
 @media (min-width: 768px) {
   .menu-lightbox .yarl__slide_image {
     width: auto !important;
     height: auto !important;
-    max-width: min(70vw, 860px);
-    max-height: min(68vh, 640px);
-    object-fit: contain;
+    max-width: min(46vw, 640px) !important;
+    max-height: min(58vh, 520px) !important;
+    object-fit: contain !important;
   }
 }
