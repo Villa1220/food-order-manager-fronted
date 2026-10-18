@@ -70,6 +70,15 @@ export function MenuSection() {
   const { locale, t } = useLanguage();
   const [active, setActive] = useState<FilterId>("todos");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [desktop, setDesktop] = useState(false);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const sync = () => setDesktop(media.matches);
+    sync();
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
   const [catalog, setCatalog] = useState<MenuItem[]>(MENU_ITEMS);
 
   useEffect(() => {
@@ -315,6 +324,7 @@ export function MenuSection() {
               </div>
             ) : null,
         }}
+        carousel={desktop ? { padding: "18%", imageFit: "contain" } : undefined}
         zoom={{ maxZoomPixelRatio: 3, scrollToZoom: true, doubleTapDelay: 250 }}
         styles={{
           container: { backgroundColor: "rgba(15, 12, 9, 0.96)" },
