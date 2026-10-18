@@ -7,7 +7,9 @@ export type ReportDish = {
 };
 
 export type DailyReport = {
-  date: string;
+  from: string;
+  to: string;
+  label: string;
   dishes: ReportDish[];
   efectivo: string;
   transferencia: string;
@@ -17,11 +19,6 @@ export type DailyReport = {
 
 function money(value: string | number): string {
   return `$${Number(value).toFixed(2)}`;
-}
-
-function labelDate(iso: string): string {
-  const [year, month, day] = iso.split("-");
-  return `${day}/${month}/${year}`;
 }
 
 export function reportPdfBlob(report: DailyReport): Blob {
@@ -35,7 +32,7 @@ export function reportPdfBlob(report: DailyReport): Blob {
   y += 8;
   doc.setFont("times", "italic");
   doc.setFontSize(12);
-  doc.text(`Cierre del ${labelDate(report.date)}`, width / 2, y, { align: "center" });
+  doc.text(`Cierre del ${report.label}`, width / 2, y, { align: "center" });
   y += 8;
   doc.setDrawColor(209, 74, 4);
   doc.setLineWidth(0.4);

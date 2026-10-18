@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, type DateRange } from "react-day-picker";
 import { es } from "date-fns/locale";
 import "react-day-picker/style.css";
 import { apiFetch } from "@/lib/api";
@@ -38,13 +38,33 @@ function isoDate(date: Date): string {
   return `${date.getFullYear()}-${month}-${day}`;
 }
 
-function hourLabel(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-EC", {
+function hourLabel(iso: string, withDay: boolean): string {
+  const time = new Date(iso).toLocaleTimeString("es-EC", {
     timeZone: "America/Guayaquil",
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
   });
+  if (!withDay) return time;
+  const day = new Date(iso).toLocaleDateString("es-EC", {
+    timeZone: "America/Guayaquil",
+    day: "2-digit",
+    month: "2-digit",
+  });
+  return `${day} ${time}`;
+}
+
+function pretty(date: Date): string {
+  return date.toLocaleDateString("es-EC", { day: "numeric", month: "short" });
+}
+
+function selectedBounds(range: DateRange | undefined): { from: string; to: string } {
+  if (!range?.from) {
+    throw new Error("Elige el primer día y luego el último.");
+  }
+  const from = isoDate(range.from);
+  const to = isoDate(range.to ?? range.from);
+  return from <= to ? { from, to } : { from: to, to: from };
 }
 
 function money(value: string | number): string {
@@ -52,7 +72,7 @@ function money(value: string | number): string {
 }
 
 export default function ReportesPage() {
-  const [selected, setSelected] = useState<Date>(today());
+  const [range, setRange] = useState<DateRange | undefined>({ from: today(), to: today() });
   const [orders, setOrders] = useState<ReportOrder[] | null>(null);
   const [searched, setSearched] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -66,10 +86,12 @@ export default function ReportesPage() {
     setLoading(true);
     setError(null);
     try {
-      const date = isoDate(selected);
-      const data = await apiFetch<{ orders: ReportOrder[] }>(`/api/reports?date=${date}`);
+      const bounds = selectedBounds(range);
+      const data = await apiFetch<{ orders: ReportOrder[] }>(
+        `/api/reports?from=${bounds.from}&to=${bounds.to}`,
+      );
       setOrders(data.orders);
-      setSearched(date);
+      setSearched(`${bounds.from}:${bounds.to}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos");
     } finally {
@@ -81,13 +103,13 @@ export default function ReportesPage() {
     setGenerating(true);
     setError(null);
     try {
-      const date = isoDate(selected);
+      const bounds = selectedBounds(range);
       const data = await apiFetch<{
         report: DailyReport;
         whatsapp: { ok: boolean };
       }>("/api/reports", {
         method: "POST",
-        body: JSON.stringify({ date }),
+        body: JSON.stringify(bounds),
       });
       setReport(data.report);
       setWhatsappOk(data.whatsapp.ok);
@@ -97,9 +119,11 @@ export default function ReportesPage() {
         if (current) URL.revokeObjectURL(current);
         return url;
       });
-      const list = await apiFetch<{ orders: ReportOrder[] }>(`/api/reports?date=${date}`);
+      const list = await apiFetch<{ orders: ReportOrder[] }>(
+        `/api/reports?from=${bounds.from}&to=${bounds.to}`,
+      );
       setOrders(list.orders);
-      setSearched(date);
+      setSearched(`${bounds.from}:${bounds.to}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo generar el reporte");
     } finally {
@@ -111,23 +135,28 @@ export default function ReportesPage() {
     <div className="pb-16">
       <h1 className="font-display text-4xl font-black italic text-brand-600">Reportes</h1>
       <p className="mt-1 max-w-xl text-sm text-foreground/60">
-        Elige el día, busca las comandas y genera el cierre. El PDF y el mensaje
-        salen juntos. Sábado y domingo a las 6 de la tarde el mensaje se envía solo.
+        Toca el primer día y luego el último. Buscar muestra esas comandas y Generar
+        reporte suma los dos días. Sábado y domingo a las 6 de la tarde se envía el cierre de ese día.
       </p>
 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[auto_minmax(0,1fr)]">
         <div className="report-calendar rounded-3xl border border-border-subtle bg-surface p-4 shadow-sm">
           <DayPicker
-            mode="single"
+            mode="range"
             locale={es}
             weekStartsOn={1}
-            selected={selected}
-            onSelect={(day) => {
-              if (day) setSelected(day);
-            }}
+            selected={range}
+            onSelect={setRange}
             disabled={{ after: today() }}
             captionLayout="label"
           />
+          <p className="px-3 pb-2 text-center text-sm text-foreground/60">
+            {range?.from
+              ? range.to && isoDate(range.to) !== isoDate(range.from)
+                ? `${pretty(range.from)} al ${pretty(range.to)}`
+                : pretty(range.from)
+              : "Toca el primer día y luego el último."}
+          </p>
           <div className="mt-2 flex flex-wrap gap-2 px-2 pb-2">
             <button
               type="button"
@@ -180,7 +209,12 @@ export default function ReportesPage() {
                       <td className="px-4 py-3 font-display text-xl font-black text-brand-600">
                         {dailyTicketNumber(order.order_code)}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">{hourLabel(order.received_at)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {hourLabel(
+                          order.received_at,
+                          Boolean(searched && searched.slice(0, 10) !== searched.slice(11)),
+                        )}
+                      </td>
                       <td className="px-4 py-3">{order.table_number ?? "—"}</td>
                       <td className="px-4 py-3">
                         <p className="text-xs text-foreground/45">{order.order_code}</p>
@@ -228,7 +262,7 @@ export default function ReportesPage() {
               {pdfUrl ? (
                 <a
                   href={pdfUrl}
-                  download={`cierre-${report.date}.pdf`}
+                  download={`cierre-${report.from}${report.to === report.from ? "" : `-${report.to}`}.pdf`}
                   className="text-xs font-semibold text-brand-700"
                 >
                   Descargar
