@@ -69,6 +69,15 @@ function isOrderReady(order: Order) {
   return order.items.length > 0 && order.items.every(isItemDone);
 }
 
+function ecuadorDay(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Guayaquil" });
+}
+
+function readyToday(order: Order): boolean {
+  const stamp = order.ready_at || order.received_at;
+  return ecuadorDay(stamp) === ecuadorDay(new Date().toISOString());
+}
+
 function MesaField({
   order,
   onSaved,
@@ -459,7 +468,7 @@ export default function PedidosPage() {
     .filter((order) => !isOrderReady(order))
     .sort(byKitchenOrder);
   const readyOrders = activeOrders
-    .filter((order) => isOrderReady(order))
+    .filter((order) => isOrderReady(order) && readyToday(order))
     .sort(byKitchenOrder);
 
   function openAdd(order: Order) {
