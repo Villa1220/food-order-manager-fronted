@@ -6,11 +6,18 @@ export type ReportDish = {
   amount: string;
 };
 
+export type ReportSection = {
+  name: string;
+  dishes: ReportDish[];
+  total: string;
+};
+
 export type DailyReport = {
   from: string;
   to: string;
   label: string;
   dishes: ReportDish[];
+  sections: ReportSection[];
   efectivo: string;
   transferencia: string;
   total: string;
@@ -39,33 +46,45 @@ export function reportPdfBlob(report: DailyReport): Blob {
   doc.line(16, y, width - 16, y);
   y += 10;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text("Plato", 16, y);
-  doc.text("Cant.", 130, y, { align: "right" });
-  doc.text("Total", width - 16, y, { align: "right" });
-  y += 3;
-  doc.setLineWidth(0.2);
-  doc.setDrawColor(40, 30, 20);
-  doc.line(16, y, width - 16, y);
-  y += 7;
-
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  if (report.dishes.length === 0) {
+  const sections = report.sections ?? [];
+  if (sections.length === 0) {
     doc.text("Sin platos vendidos.", 16, y);
     y += 8;
   }
-  for (const dish of report.dishes) {
+  for (const section of sections) {
     if (y > 250) {
       doc.addPage();
       y = 18;
     }
-    const name = doc.splitTextToSize(dish.name, 100) as string[];
-    doc.text(name[0], 16, y);
-    doc.text(String(dish.quantity), 130, y, { align: "right" });
-    doc.text(money(dish.amount), width - 16, y, { align: "right" });
-    y += 7;
+    doc.setFont("times", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(209, 74, 4);
+    doc.text(section.name, 16, y);
+    doc.setTextColor(20, 16, 12);
+    y += 6;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    if (section.dishes.length === 0) {
+      doc.text("Sin ventas", 16, y);
+      y += 6;
+    }
+    for (const dish of section.dishes) {
+      if (y > 260) {
+        doc.addPage();
+        y = 18;
+      }
+      const name = doc.splitTextToSize(dish.name, 100) as string[];
+      doc.text(name[0], 16, y);
+      doc.text(String(dish.quantity), 130, y, { align: "right" });
+      doc.text(money(dish.amount), width - 16, y, { align: "right" });
+      y += 6;
+    }
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total ${section.name}`, 16, y);
+    doc.text(money(section.total), width - 16, y, { align: "right" });
+    y += 9;
   }
 
   y += 2;
