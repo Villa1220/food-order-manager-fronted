@@ -17,6 +17,7 @@ type ReportOrder = {
   subtotal: string;
   received_at: string;
   items_label: string;
+  payment_label: string;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -169,6 +170,7 @@ export default function ReportesPage() {
                     <th className="px-4 py-3">Mesa</th>
                     <th className="px-4 py-3">Pedido</th>
                     <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3">Pago</th>
                     <th className="px-4 py-3 text-right">Total</th>
                   </tr>
                 </thead>
@@ -185,6 +187,7 @@ export default function ReportesPage() {
                         <p>{order.items_label}</p>
                       </td>
                       <td className="px-4 py-3">{STATUS_LABEL[order.status] ?? order.status}</td>
+                      <td className="px-4 py-3 whitespace-nowrap">{order.payment_label}</td>
                       <td className="px-4 py-3 text-right font-semibold">
                         {money(order.subtotal)}
                       </td>
