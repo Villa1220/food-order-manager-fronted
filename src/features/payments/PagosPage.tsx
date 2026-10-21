@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Banknote, FileDown, Minus, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
@@ -96,7 +96,9 @@ export default function PagosPage() {
   const [menu, setMenu] = useState<MenuDish[]>([]);
   const [menuReady, setMenuReady] = useState(false);
   const [menuQuery, setMenuQuery] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
   const [addingId, setAddingId] = useState<number | null>(null);
+  const searchCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const loadOrders = useCallback(async () => {
     const data = await apiFetch<{ orders: OpenOrder[] }>("/api/payments/open", {
@@ -139,6 +141,7 @@ export default function PagosPage() {
     setSelectedId(orderId);
     setAdderOpen(false);
     setMenuQuery("");
+    setMenuOpen(false);
     setError(null);
     try {
       await loadDetail(orderId);
@@ -177,6 +180,7 @@ export default function PagosPage() {
       });
       await loadOrders();
       await loadDetail(detail.order.id, true);
+      setMenuOpen(false);
       toast.success("Plato agregado", { description: dish.name });
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo agregar el plato");
@@ -355,11 +359,29 @@ export default function PagosPage() {
                       <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground/40" />
                       <input
                         value={menuQuery}
-                        onChange={(event) => setMenuQuery(event.target.value)}
+                        onChange={(event) => {
+                          setMenuQuery(event.target.value);
+                          setMenuOpen(true);
+                        }}
+                        onFocus={() => {
+                          if (searchCloseTimer.current) {
+                            clearTimeout(searchCloseTimer.current);
+                            searchCloseTimer.current = null;
+                          }
+                          setMenuOpen(true);
+                        }}
+                        onBlur={() => {
+                          if (searchCloseTimer.current) clearTimeout(searchCloseTimer.current);
+                          searchCloseTimer.current = setTimeout(() => {
+                            searchCloseTimer.current = null;
+                            setMenuOpen(false);
+                          }, 200);
+                        }}
                         placeholder="Buscar plato"
                         className="w-full rounded-lg border border-border-subtle bg-surface py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-400"
                       />
                     </label>
+                    {menuOpen ? (
                     <div className="mt-2 max-h-56 space-y-3 overflow-y-auto">
                       {menuReady ? (
                         visibleMenu.length === 0 ? (
@@ -386,6 +408,7 @@ export default function PagosPage() {
                         <p className="px-1 py-2 text-sm text-foreground/50">Cargando menú…</p>
                       )}
                     </div>
+                    ) : null}
                   </div>
                 ) : null}
                 <ul className="mt-4 space-y-3">
@@ -579,6 +602,7 @@ function DishChoices({
             <button
               type="button"
               disabled={addingId != null}
+              onPointerDown={(event) => event.preventDefault()}
               onClick={() => onAdd(dish)}
               className="flex w-full items-center justify-between gap-3 rounded-lg px-1 py-2 text-left text-sm hover:bg-brand-50 disabled:opacity-40"
             >
