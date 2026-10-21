@@ -1,5 +1,5 @@
 import { API_URL, readSession } from "@/lib/auth";
-import { itemTimerStart, pendingUnits, type Order } from "@/features/orders/types";
+import type { Order } from "@/features/orders/types";
 
 const VOICE_KEY = "kds-voice";
 const NUMBERS = [
@@ -74,17 +74,6 @@ export function addedPhrase(
     .map((item) => withDetail(itemPhrase(item.quantity, item.name), item.notes))
     .join(". ");
   return `Agregaron al pedido. ${dishes}.`;
-}
-
-export function nudgeFallback(minutes: number, dishes: string[]): string {
-  const list = joinSpanish(dishes);
-  if (minutes >= 20) {
-    return `Qué fue con ${list}. Ya van ${minutes} minutos y los clientes están con hambre.`;
-  }
-  if (minutes >= 10) {
-    return `Chuta, ${list} lleva ${minutes} minutos. Ya toca moverse.`;
-  }
-  return `Pilas con ${list}, porfa. La mesa está esperando.`;
 }
 
 export function voiceEnabled(): boolean {
@@ -176,22 +165,6 @@ export function speak(text: string) {
   });
 }
 
-/** Resumen de lo que cocina aún no despacha, con la cantidad de cada plato. */
-export function dispatchBoardPhrase(orders: Order[]): string | null {
-  const totals = new Map<string, number>();
-  for (const order of orders) {
-    for (const item of order.items) {
-      const left = pendingUnits(item);
-      if (left > 0) totals.set(item.name, (totals.get(item.name) ?? 0) + left);
-    }
-  }
-  if (totals.size === 0) return null;
-  const list = [...totals.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "es"))
-    .map(([name, quantity]) => itemPhrase(quantity, name));
-  return `Recuerden que tenemos que despachar lo siguiente. ${joinSpanish(list)}.`;
-}
-
 /** El navegador solo suena después de un toque. Esta función debe llamarse desde un click. */
 export function enableVoice(): boolean {
   voiceOnMemory = true;
@@ -206,35 +179,6 @@ export function enableVoice(): boolean {
   playback = Promise.resolve();
   speak("Voz de cocina activada.");
   return true;
-}
-
-export function pendingDishes(
-  order: Order,
-  minMinutes: number,
-  now = Date.now(),
-): { name: string; phrase: string }[] {
-  const dishes: { name: string; phrase: string }[] = [];
-  for (const item of order.items) {
-    const left = pendingUnits(item);
-    if (left <= 0) continue;
-    const start = new Date(itemTimerStart(item, order)).getTime();
-    const minutes = Math.floor((now - start) / 60000);
-    if (minutes >= minMinutes) {
-      dishes.push({ name: item.name, phrase: itemPhrase(left, item.name) });
-    }
-  }
-  return dishes;
-}
-
-export function oldestPendingMinutes(order: Order, now = Date.now()): number {
-  let oldest = 0;
-  for (const item of order.items) {
-    if (pendingUnits(item) <= 0) continue;
-    const start = new Date(itemTimerStart(item, order)).getTime();
-    const minutes = Math.floor((now - start) / 60000);
-    if (minutes > oldest) oldest = minutes;
-  }
-  return oldest;
 }
 
 export type ItemSnapshot = Map<number, number>;
@@ -259,18 +203,5 @@ export function addedItems(
     }
   }
   return added;
-}
-
-export const NUDGE_MINUTES = [10, 20, 30, 40, 50, 60] as const;
-
-export function crossedNudge(
-  minutes: number,
-  spoken: Set<number>,
-): (typeof NUDGE_MINUTES)[number] | null {
-  const levels = [...NUDGE_MINUTES].reverse();
-  for (const level of levels) {
-    if (minutes >= level && !spoken.has(level)) return level;
-  }
-  return null;
 }
 

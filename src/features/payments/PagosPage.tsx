@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Banknote, FileDown, Minus, Plus } from "lucide-react";
+import { Banknote, FileDown, Minus, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -65,6 +65,24 @@ function remaining(item: BillItem): number {
 const CONTAINER_PRICE = 0.25;
 const CONTAINER_NAME = "Contenedor para llevar";
 
+type MenuDish = {
+  id: number;
+  name: string;
+  price: string;
+  available: boolean;
+  category: string;
+};
+
+function isDessert(category: string): boolean {
+  return /postre/i.test(category);
+}
+
+function dessertFirst(a: MenuDish, b: MenuDish): number {
+  const rank = Number(isDessert(a.category)) - Number(isDessert(b.category));
+  if (rank !== 0) return -rank;
+  return a.name.localeCompare(b.name, "es");
+}
+
 export default function PagosPage() {
   const [orders, setOrders] = useState<OpenOrder[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -74,16 +92,37 @@ export default function PagosPage() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [adderOpen, setAdderOpen] = useState(false);
+  const [menu, setMenu] = useState<MenuDish[]>([]);
+  const [menuReady, setMenuReady] = useState(false);
+  const [menuQuery, setMenuQuery] = useState("");
+  const [addingId, setAddingId] = useState<number | null>(null);
 
   const loadOrders = useCallback(async () => {
-    const data = await apiFetch<{ orders: OpenOrder[] }>("/api/payments/open");
+    const data = await apiFetch<{ orders: OpenOrder[] }>("/api/payments/open", {
+      cache: "no-store",
+    });
     setOrders(data.orders);
     return data.orders;
   }, []);
 
-  const loadDetail = useCallback(async (orderId: number) => {
-    const data = await apiFetch<Detail>(`/api/payments/orders/${orderId}`);
+  const loadDetail = useCallback(async (orderId: number, keepDraft = false) => {
+    const data = await apiFetch<Detail>(`/api/payments/orders/${orderId}`, {
+      cache: "no-store",
+    });
     setDetail(data);
+    if (keepDraft) {
+      setDraft((current) => {
+        const next: Record<number, number> = {};
+        for (const item of data.items) {
+          const left = item.quantity - Number(item.paid_qty);
+          const chosen = current[item.id] ?? 0;
+          if (chosen > 0 && left > 0) next[item.id] = Math.min(chosen, left);
+        }
+        return next;
+      });
+      return;
+    }
     setDraft({});
     setContainers(0);
   }, []);
@@ -98,11 +137,51 @@ export default function PagosPage() {
 
   async function openOrder(orderId: number) {
     setSelectedId(orderId);
+    setAdderOpen(false);
+    setMenuQuery("");
     setError(null);
     try {
       await loadDetail(orderId);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo abrir el pedido");
+    }
+  }
+
+  async function openAdder() {
+    setAdderOpen((open) => !open);
+    if (menuReady) return;
+    try {
+      const data = await apiFetch<{
+        categories: { name: string; items: Omit<MenuDish, "category">[] }[];
+      }>("/api/menu", { cache: "no-store" });
+      const dishes = data.categories.flatMap((category) =>
+        (category.items ?? [])
+          .filter((item) => item.available)
+          .map((item) => ({ ...item, category: category.name })),
+      );
+      setMenu(dishes.sort(dessertFirst));
+      setMenuReady(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cargar el menú");
+    }
+  }
+
+  async function addDish(dish: MenuDish) {
+    if (!detail || addingId != null) return;
+    setAddingId(dish.id);
+    setError(null);
+    try {
+      await apiFetch(`/api/orders/${detail.order.id}/items`, {
+        method: "POST",
+        body: JSON.stringify({ items: [{ menu_item_id: dish.id, quantity: 1 }] }),
+      });
+      await loadOrders();
+      await loadDetail(detail.order.id, true);
+      toast.success("Plato agregado", { description: dish.name });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo agregar el plato");
+    } finally {
+      setAddingId(null);
     }
   }
 
@@ -131,6 +210,12 @@ export default function PagosPage() {
   const containerTotal = containers * CONTAINER_PRICE;
   const draftTotal = draftLines.reduce((sum, line) => sum + line.total, 0) + containerTotal;
   const canCharge = draftLines.length > 0 || containers > 0;
+  const menuNeedle = menuQuery.trim().toLocaleLowerCase("es");
+  const visibleMenu = menu.filter((dish) =>
+    menuNeedle ? dish.name.toLocaleLowerCase("es").includes(menuNeedle) : true,
+  );
+  const dessertMenu = visibleMenu.filter((dish) => isDessert(dish.category));
+  const otherMenu = visibleMenu.filter((dish) => !isDessert(dish.category));
 
   async function charge(method: "efectivo" | "transferencia") {
     if (!detail || !canCharge) return;
@@ -246,16 +331,68 @@ export default function PagosPage() {
                     </h2>
                     <p className="text-xs text-foreground/50">{detail.order.order_code}</p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={takeAll}
-                    className="text-xs font-semibold text-brand-700"
-                  >
-                    Toda la cuenta
-                  </button>
+                  <div className="flex shrink-0 items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => void openAdder()}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Agregar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={takeAll}
+                      className="text-xs font-semibold text-brand-700"
+                    >
+                      Toda la cuenta
+                    </button>
+                  </div>
                 </div>
+                {adderOpen ? (
+                  <div className="mt-4 rounded-xl border border-border-subtle bg-background p-3">
+                    <label className="relative block">
+                      <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-foreground/40" />
+                      <input
+                        value={menuQuery}
+                        onChange={(event) => setMenuQuery(event.target.value)}
+                        placeholder="Buscar plato"
+                        className="w-full rounded-lg border border-border-subtle bg-surface py-2 pl-9 pr-3 text-sm outline-none focus:border-brand-400"
+                      />
+                    </label>
+                    <div className="mt-2 max-h-56 space-y-3 overflow-y-auto">
+                      {menuReady ? (
+                        visibleMenu.length === 0 ? (
+                          <p className="px-1 py-2 text-sm text-foreground/50">
+                            Ningún plato coincide.
+                          </p>
+                        ) : (
+                          <>
+                            <DishChoices
+                              title="Postres"
+                              dishes={dessertMenu}
+                              addingId={addingId}
+                              onAdd={(dish) => void addDish(dish)}
+                            />
+                            <DishChoices
+                              title="Otros platos"
+                              dishes={otherMenu}
+                              addingId={addingId}
+                              onAdd={(dish) => void addDish(dish)}
+                            />
+                          </>
+                        )
+                      ) : (
+                        <p className="px-1 py-2 text-sm text-foreground/50">Cargando menú…</p>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
                 <ul className="mt-4 space-y-3">
-                  {detail.items.map((item) => {
+                  {detail.items.filter((item) => remaining(item) > 0).length === 0 ? (
+                    <li className="text-sm text-foreground/50">Nada pendiente por cobrar.</li>
+                  ) : null}
+                  {detail.items.filter((item) => remaining(item) > 0).map((item) => {
                     const left = remaining(item);
                     const chosen = draft[item.id] ?? 0;
                     return (
@@ -417,6 +554,43 @@ export default function PagosPage() {
           )}
         </section>
       </div>
+    </div>
+  );
+}
+
+function DishChoices({
+  title,
+  dishes,
+  addingId,
+  onAdd,
+}: {
+  title: string;
+  dishes: MenuDish[];
+  addingId: number | null;
+  onAdd: (dish: MenuDish) => void;
+}) {
+  if (dishes.length === 0) return null;
+  return (
+    <div>
+      <p className="px-1 text-xs font-bold uppercase tracking-wide text-foreground/45">{title}</p>
+      <ul className="mt-1">
+        {dishes.map((dish) => (
+          <li key={dish.id}>
+            <button
+              type="button"
+              disabled={addingId != null}
+              onClick={() => onAdd(dish)}
+              className="flex w-full items-center justify-between gap-3 rounded-lg px-1 py-2 text-left text-sm hover:bg-brand-50 disabled:opacity-40"
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{dish.name}</span>
+                <span className="text-xs text-foreground/50">{money(dish.price)}</span>
+              </span>
+              <Plus className="h-3.5 w-3.5 shrink-0 text-brand-700" />
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
