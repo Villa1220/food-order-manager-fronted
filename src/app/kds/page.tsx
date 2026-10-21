@@ -21,13 +21,7 @@ import {
   addedItems,
   addedPhrase,
   announceNewOrder,
-  crossedNudge,
-  NUDGE_MINUTES,
-  dispatchBoardPhrase,
   enableVoice,
-  nudgeFallback,
-  oldestPendingMinutes,
-  pendingDishes,
   snapshotItems,
   speak,
   voiceEnabled,
@@ -125,13 +119,11 @@ function KdsBoard() {
   const [voiceOn, setVoiceOn] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [, forceTick] = useState(0);
-  const ordersRef = useRef<Order[]>([]);
   const voiceOnRef = useRef(false);
   const seenRef = useRef<{
     primed: boolean;
-    orders: Map<number, { items: ItemSnapshot; nudges: Set<number> }>;
+    orders: Map<number, ItemSnapshot>;
   }>({ primed: false, orders: new Map() });
-  ordersRef.current = orders;
   voiceOnRef.current = voiceOn;
 
   useEffect(() => {
@@ -143,12 +135,7 @@ function KdsBoard() {
     const seen = seenRef.current;
     if (!seen.primed) {
       for (const order of orders) {
-        const nudges = new Set<number>();
-        const minutes = oldestPendingMinutes(order);
-        for (const level of NUDGE_MINUTES) {
-          if (minutes >= level) nudges.add(level);
-        }
-        seen.orders.set(order.id, { items: snapshotItems(order), nudges });
+        seen.orders.set(order.id, snapshotItems(order));
       }
       seen.primed = true;
       return;
@@ -161,11 +148,7 @@ function KdsBoard() {
 
     if (!voiceOn) {
       for (const order of orders) {
-        const previous = seen.orders.get(order.id);
-        seen.orders.set(order.id, {
-          items: snapshotItems(order),
-          nudges: previous?.nudges ?? new Set(),
-        });
+        seen.orders.set(order.id, snapshotItems(order));
       }
       return;
     }
@@ -174,50 +157,14 @@ function KdsBoard() {
       const previous = seen.orders.get(order.id);
       if (!previous) {
         announceNewOrder(order);
-        seen.orders.set(order.id, { items: snapshotItems(order), nudges: new Set() });
+        seen.orders.set(order.id, snapshotItems(order));
         continue;
       }
-      const added = addedItems(previous.items, order);
+      const added = addedItems(previous, order);
       if (added.length > 0) speak(addedPhrase(added));
-      seen.orders.set(order.id, { items: snapshotItems(order), nudges: previous.nudges });
+      seen.orders.set(order.id, snapshotItems(order));
     }
   }, [loaded, orders, voiceOn]);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (!voiceOnRef.current || !seenRef.current.primed) return;
-      const now = Date.now();
-      for (const order of ordersRef.current) {
-        const tracked = seenRef.current.orders.get(order.id);
-        if (!tracked) continue;
-        const minutes = oldestPendingMinutes(order, now);
-        const level = crossedNudge(minutes, tracked.nudges);
-        if (!level) continue;
-        for (const step of NUDGE_MINUTES) {
-          if (step <= level) tracked.nudges.add(step);
-        }
-        const dishes = pendingDishes(order, level, now);
-        if (dishes.length === 0) continue;
-        const phrases = dishes.map((dish) => dish.phrase);
-        void apiFetch<{ phrase: string }>("/api/kitchen/nudge", {
-          method: "POST",
-          body: JSON.stringify({ minutes: level, dishes: phrases }),
-        })
-          .then((data) => speak(data.phrase))
-          .catch(() => speak(nudgeFallback(level, phrases)));
-      }
-    }, 5000);
-    return () => clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (!voiceOnRef.current) return;
-      const phrase = dispatchBoardPhrase(ordersRef.current);
-      if (phrase) speak(phrase);
-    }, 7 * 60 * 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   useEffect(() => {
     try {
