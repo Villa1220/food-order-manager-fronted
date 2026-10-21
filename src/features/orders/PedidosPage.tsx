@@ -241,8 +241,8 @@ function OrderCard({
             type="button"
             onClick={() => onCall(order)}
             className="rounded-full p-1.5 text-foreground/35 hover:bg-brand-50 hover:text-brand-700"
-            aria-label="Hacer que cocina escuche este pedido"
-            title="Avisar a cocina"
+            aria-label="Avisar a cocina lo que falta de esta mesa"
+            title="Avisar lo que falta"
           >
             <Volume2 className="h-4 w-4" />
           </button>
@@ -427,11 +427,34 @@ export default function PedidosPage() {
     }
   }
 
+  async function callMissing() {
+    try {
+      const data = await apiFetch<{ phrases: string[] }>("/api/orders/pending-call", {
+        method: "POST",
+      });
+      if (data.phrases.length === 0) {
+        toast.message("No hay platos pendientes");
+        return;
+      }
+      toast.success("Cocina avisada", {
+        description: "Solo lo que todavía no tiene el check.",
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo avisar a cocina");
+    }
+  }
+
   async function callKitchen(order: Order) {
     try {
-      await apiFetch(`/api/orders/${order.id}/call`, { method: "POST" });
+      const data = await apiFetch<{ phrase: string | null }>(`/api/orders/${order.id}/call`, {
+        method: "POST",
+      });
+      if (!data.phrase) {
+        toast.message("Esa mesa ya no tiene platos pendientes");
+        return;
+      }
       toast.success("Cocina avisada", {
-        description: `Mesa ${order.table_number ?? "sin número"}`,
+        description: "Solo lo que todavía no tiene el check.",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo avisar a cocina");
@@ -509,9 +532,20 @@ export default function PedidosPage() {
 
   return (
     <div className="pb-24">
-      <h1 className="font-display text-3xl font-black italic text-brand-600">
-        Pedidos
-      </h1>
+      <div className="flex items-center gap-3">
+        <h1 className="font-display text-3xl font-black italic text-brand-600">
+          Pedidos
+        </h1>
+        <button
+          type="button"
+          onClick={() => void callMissing()}
+          className="rounded-full p-2 text-foreground/40 hover:bg-brand-50 hover:text-brand-700"
+          aria-label="Avisar a cocina lo que falta"
+          title="Avisar lo que falta"
+        >
+          <Volume2 className="h-5 w-5" />
+        </button>
+      </div>
       <p className="mt-1 text-sm text-foreground/60">
         Pulsa el check de cada plato cuando cocina lo pase. El cronómetro de ese plato se detiene ahí.
       </p>
