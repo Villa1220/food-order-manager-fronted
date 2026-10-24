@@ -250,8 +250,8 @@ export default function ReportesPage() {
             </pre>
             <p className="mt-3 text-xs text-foreground/50">
               {whatsappOk
-                ? "Enviado por WhatsApp al 593984266777."
-                : "El mensaje está listo, pero WhatsApp no lo entregó. Revisa el token o que ese número haya escrito al negocio en las últimas 24 horas."}
+                ? "Enviado por WhatsApp a 0984266777, 0987478066, 0963079890 y 0995064050."
+                : "El mensaje está listo, pero WhatsApp no lo entregó. Cada número tiene que haber escrito al negocio en las últimas 24 horas."}
             </p>
           </div>
           <div className="overflow-hidden rounded-2xl border border-border-subtle bg-surface">
