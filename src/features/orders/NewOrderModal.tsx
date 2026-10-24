@@ -260,6 +260,25 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
             </p>
           ) : null}
 
+          <label className="mb-4 block shrink-0 text-sm">
+              <span className="mb-1 block text-foreground/60">Mesa</span>
+              <input
+                value={tableNumber}
+                onChange={(e) => setTableNumber(e.target.value)}
+                onFocus={(event) => {
+                  window.setTimeout(() => {
+                    event.target.scrollIntoView({ block: "center" });
+                  }, 280);
+                }}
+                name="mesa"
+                inputMode="numeric"
+                enterKeyHint="done"
+                autoComplete="off"
+                placeholder="Ej. 4"
+                className="w-full rounded-lg border border-border-subtle bg-background px-3 py-2"
+            />
+          </label>
+
           <label className="relative block shrink-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-foreground/40" />
             <input
@@ -321,24 +340,6 @@ export function NewOrderModal({ open, targetOrder, onClose, onSaved }: Props) {
           ) : null}
 
           <div className="mt-4 min-h-0 flex-1 overflow-y-auto border-t border-border-subtle pt-4">
-            <label className="mb-4 block text-sm">
-              <span className="mb-1 block text-foreground/60">Mesa</span>
-              <input
-                value={tableNumber}
-                onChange={(e) => setTableNumber(e.target.value)}
-                onFocus={(event) => {
-                  window.setTimeout(() => {
-                    event.target.scrollIntoView({ block: "center" });
-                  }, 280);
-                }}
-                name="mesa"
-                inputMode="numeric"
-                enterKeyHint="done"
-                autoComplete="off"
-                placeholder="Ej. 4"
-                className="w-full rounded-lg border border-border-subtle bg-background px-3 py-2"
-              />
-            </label>
             <h3 className="text-xs font-bold uppercase tracking-wide text-foreground/50">
               Comanda
             </h3>
