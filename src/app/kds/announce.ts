@@ -20,6 +20,7 @@ const NUMBERS = [
 let playback: Promise<void> = Promise.resolve();
 let voiceOnMemory = false;
 let speaker: HTMLAudioElement | null = null;
+let audioCtx: AudioContext | null = null;
 
 const SILENT_WAV =
   "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
@@ -30,6 +31,15 @@ function getSpeaker(): HTMLAudioElement {
     speaker.setAttribute("playsinline", "true");
   }
   return speaker;
+}
+
+function kitchenAudio(): AudioContext | null {
+  const Ctx =
+    window.AudioContext ||
+    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctx) return null;
+  if (!audioCtx) audioCtx = new Ctx();
+  return audioCtx;
 }
 
 function feminine(name: string): boolean {
@@ -112,13 +122,18 @@ function pickVoice(): SpeechSynthesisVoice | null {
 function speakWithBrowser(text: string): Promise<void> {
   if (!window.speechSynthesis) return Promise.resolve();
   return new Promise((resolve) => {
+    const timer = window.setTimeout(resolve, 8000);
+    const done = () => {
+      window.clearTimeout(timer);
+      resolve();
+    };
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "es-MX";
     const voice = pickVoice();
     if (voice) utterance.voice = voice;
     utterance.rate = 0.92;
-    utterance.onend = () => resolve();
-    utterance.onerror = () => resolve();
+    utterance.onend = done;
+    utterance.onerror = done;
     window.speechSynthesis.speak(utterance);
   });
 }
@@ -126,25 +141,26 @@ function speakWithBrowser(text: string): Promise<void> {
 function playBlob(blob: Blob): Promise<void> {
   const url = URL.createObjectURL(blob);
   const audio = getSpeaker();
+  audio.loop = false;
   audio.src = url;
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const done = () => {
       URL.revokeObjectURL(url);
       resolve();
     };
     audio.onended = done;
-    audio.onerror = done;
-    void audio.play().catch(done);
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("audio"));
+    };
+    void audio.play().catch((error: unknown) => {
+      URL.revokeObjectURL(url);
+      reject(error);
+    });
   });
 }
 
 async function speakWithLorenzo(text: string): Promise<void> {
-  try {
-    await playBlob(await synthesizeLorenzo(text));
-    return;
-  } catch {
-    // Si esta pantalla no alcanza la voz, se pide al servidor.
-  }
   const token = readSession()?.token;
   const response = await fetch(`${API_URL}/api/kitchen/speak`, {
     method: "POST",
@@ -154,10 +170,14 @@ async function speakWithLorenzo(text: string): Promise<void> {
     },
     body: JSON.stringify({ text }),
   });
-  if (!response.ok) throw new Error("sin voz");
-  const blob = await response.blob();
-  if (blob.size < 500) throw new Error("audio corto");
-  await playBlob(blob);
+  if (response.ok) {
+    const blob = await response.blob();
+    if (blob.size >= 500) {
+      await playBlob(blob);
+      return;
+    }
+  }
+  await playBlob(await synthesizeLorenzo(text));
 }
 
 export function speak(text: string) {
@@ -180,7 +200,17 @@ export function enableVoice(): boolean {
   } catch {
     // En algunas teles no se puede guardar. La voz queda activa en esta visita.
   }
+  const ctx = kitchenAudio();
+  if (ctx) {
+    void ctx.resume();
+    const buffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    source.connect(ctx.destination);
+    source.start();
+  }
   const audio = getSpeaker();
+  audio.loop = true;
   audio.src = SILENT_WAV;
   void audio.play().catch(() => undefined);
   playback = Promise.resolve();
