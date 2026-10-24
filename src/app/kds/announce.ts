@@ -161,6 +161,12 @@ function playBlob(blob: Blob): Promise<void> {
 }
 
 async function speakWithLorenzo(text: string): Promise<void> {
+  try {
+    await playBlob(await synthesizeLorenzo(text));
+    return;
+  } catch {
+    // Navegador no llega a Microsoft. El servidor manda la otra voz.
+  }
   const token = readSession()?.token;
   const response = await fetch(`${API_URL}/api/kitchen/speak`, {
     method: "POST",
@@ -170,14 +176,10 @@ async function speakWithLorenzo(text: string): Promise<void> {
     },
     body: JSON.stringify({ text }),
   });
-  if (response.ok) {
-    const blob = await response.blob();
-    if (blob.size >= 500) {
-      await playBlob(blob);
-      return;
-    }
-  }
-  await playBlob(await synthesizeLorenzo(text));
+  if (!response.ok) throw new Error("sin voz");
+  const blob = await response.blob();
+  if (blob.size < 500) throw new Error("audio corto");
+  await playBlob(blob);
 }
 
 export function speak(text: string) {
