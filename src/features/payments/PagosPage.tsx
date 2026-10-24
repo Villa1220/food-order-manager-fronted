@@ -169,19 +169,20 @@ export default function PagosPage() {
     }
   }
 
-  async function addDish(dish: MenuDish) {
+  async function addDish(dish: MenuDish, quantity: number) {
     if (!detail || addingId != null) return;
+    const count = Math.min(20, Math.max(1, quantity));
     setAddingId(dish.id);
     setError(null);
     try {
       await apiFetch(`/api/orders/${detail.order.id}/items`, {
         method: "POST",
-        body: JSON.stringify({ items: [{ menu_item_id: dish.id, quantity: 1 }] }),
+        body: JSON.stringify({ items: [{ menu_item_id: dish.id, quantity: count }] }),
       });
       await loadOrders();
       await loadDetail(detail.order.id, true);
       setMenuOpen(false);
-      toast.success("Plato agregado", { description: dish.name });
+      toast.success("Plato agregado", { description: `${count} × ${dish.name}` });
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo agregar el plato");
     } finally {
@@ -382,7 +383,7 @@ export default function PagosPage() {
                       />
                     </label>
                     {menuOpen ? (
-                    <div className="mt-2 max-h-56 space-y-3 overflow-y-auto">
+                    <div className="mt-2 max-h-72 space-y-3 overflow-y-auto">
                       {menuReady ? (
                         visibleMenu.length === 0 ? (
                           <p className="px-1 py-2 text-sm text-foreground/50">
@@ -394,13 +395,13 @@ export default function PagosPage() {
                               title="Postres"
                               dishes={dessertMenu}
                               addingId={addingId}
-                              onAdd={(dish) => void addDish(dish)}
+                              onAdd={(dish, quantity) => void addDish(dish, quantity)}
                             />
                             <DishChoices
                               title="Otros platos"
                               dishes={otherMenu}
                               addingId={addingId}
-                              onAdd={(dish) => void addDish(dish)}
+                              onAdd={(dish, quantity) => void addDish(dish, quantity)}
                             />
                           </>
                         )
@@ -590,30 +591,66 @@ function DishChoices({
   title: string;
   dishes: MenuDish[];
   addingId: number | null;
-  onAdd: (dish: MenuDish) => void;
+  onAdd: (dish: MenuDish, quantity: number) => void;
 }) {
+  const [counts, setCounts] = useState<Record<number, number>>({});
   if (dishes.length === 0) return null;
+
+  function quantityOf(id: number): number {
+    return counts[id] ?? 1;
+  }
+
+  function changeQuantity(id: number, next: number) {
+    setCounts((current) => ({ ...current, [id]: Math.min(20, Math.max(1, next)) }));
+  }
+
   return (
     <div>
       <p className="px-1 text-xs font-bold uppercase tracking-wide text-foreground/45">{title}</p>
       <ul className="mt-1">
-        {dishes.map((dish) => (
-          <li key={dish.id}>
-            <button
-              type="button"
-              disabled={addingId != null}
-              onPointerDown={(event) => event.preventDefault()}
-              onClick={() => onAdd(dish)}
-              className="flex w-full items-center justify-between gap-3 rounded-lg px-1 py-2 text-left text-sm hover:bg-brand-50 disabled:opacity-40"
-            >
-              <span className="min-w-0">
-                <span className="block truncate font-medium">{dish.name}</span>
+        {dishes.map((dish) => {
+          const quantity = quantityOf(dish.id);
+          return (
+            <li key={dish.id} className="px-1 py-2">
+              <p className="truncate text-sm font-medium">{dish.name}</p>
+              <div className="mt-1 flex items-center justify-between gap-2">
                 <span className="text-xs text-foreground/50">{money(dish.price)}</span>
-              </span>
-              <Plus className="h-3.5 w-3.5 shrink-0 text-brand-700" />
-            </button>
-          </li>
-        ))}
+                <span className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    disabled={addingId != null || quantity <= 1}
+                    onPointerDown={(event) => event.preventDefault()}
+                    onClick={() => changeQuantity(dish.id, quantity - 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle disabled:opacity-30"
+                    aria-label="Bajar cantidad"
+                  >
+                    <Minus className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="w-5 text-center text-sm font-bold">{quantity}</span>
+                  <button
+                    type="button"
+                    disabled={addingId != null || quantity >= 20}
+                    onPointerDown={(event) => event.preventDefault()}
+                    onClick={() => changeQuantity(dish.id, quantity + 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md border border-border-subtle disabled:opacity-30"
+                    aria-label="Subir cantidad"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={addingId != null}
+                    onPointerDown={(event) => event.preventDefault()}
+                    onClick={() => onAdd(dish, quantity)}
+                    className="ml-1 rounded-md px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-40"
+                  >
+                    Agregar
+                  </button>
+                </span>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
