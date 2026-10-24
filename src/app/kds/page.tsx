@@ -11,7 +11,6 @@ import {
   ACTIVE_STATUSES,
   elapsedSince,
   formatElapsed,
-  dailyTicketNumber,
   itemTimerStart,
   pendingUnits,
   type Order,
@@ -99,13 +98,15 @@ function timerTone(minutes: number, light: boolean, stopped: boolean) {
   return light ? "bg-ink/5 text-ink/55" : "bg-cream/10 text-cream/60";
 }
 
+function byArrival(a: Order, b: Order): number {
+  return new Date(a.received_at).getTime() - new Date(b.received_at).getTime();
+}
+
 function upsertOrder(list: Order[], order: Order): Order[] {
   const isActive = (ACTIVE_STATUSES as readonly string[]).includes(order.status);
   const without = list.filter((o) => o.id !== order.id);
   if (!isActive) return without;
-  return [order, ...without].sort(
-    (a, b) => new Date(a.received_at).getTime() - new Date(b.received_at).getTime(),
-  );
+  return [order, ...without].sort(byArrival);
 }
 
 function KdsBoard() {
@@ -194,10 +195,7 @@ function KdsBoard() {
     try {
       const data = await apiFetch<{ orders: Order[] }>("/api/orders?active=1");
       setOrders(
-        [...data.orders].sort(
-          (a, b) =>
-            new Date(a.received_at).getTime() - new Date(b.received_at).getTime(),
-        ),
+        [...data.orders].sort(byArrival),
       );
       setError(null);
       setLoaded(true);
@@ -441,7 +439,8 @@ function KdsBoard() {
                 return quantity > 0 ? [{ ...item, quantity }] : [];
               }),
             }))
-            .filter((row) => row.items.length > 0);
+            .filter((row) => row.items.length > 0)
+            .sort((a, b) => byArrival(a.order, b.order));
           return (
             <section
               className={cn(
@@ -454,7 +453,7 @@ function KdsBoard() {
                   Pendiente ({tickets.length})
                 </h2>
                 <p className={cn("text-xs", light ? "text-ink/55" : "text-cream/55")}>
-                  De arriba hacia abajo. El número vuelve a 1 cada día.
+                  De arriba hacia abajo. Llega primero quien pidió antes.
                 </p>
               </div>
               {tickets.length === 0 ? (
@@ -476,17 +475,13 @@ function KdsBoard() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className={cn("truncate", light ? "text-ink/65" : "text-cream/70")}>
-                            Mesa {order.table_number ?? "—"} ·{" "}
-                            {order.channel === "whatsapp" ? "WhatsApp" : "salón"}
+                          <p className="font-display text-3xl font-black leading-none text-brand-600">
+                            {order.table_number?.trim() ? `Mesa ${order.table_number.trim()}` : "Sin mesa"}
                           </p>
-                          <p className={cn("truncate text-xs", light ? "text-ink/40" : "text-cream/40")}>
-                            {order.order_code}
+                          <p className={cn("mt-1 truncate text-xs", light ? "text-ink/40" : "text-cream/40")}>
+                            {order.channel === "whatsapp" ? "WhatsApp" : "Salón"}
                           </p>
                         </div>
-                        <p className="font-display text-4xl font-black tabular-nums leading-none text-brand-600">
-                          {dailyTicketNumber(order.order_code)}
-                        </p>
                       </div>
                       <ul
                         className={cn(
