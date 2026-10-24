@@ -110,7 +110,7 @@ export function synthesizeLorenzo(text: string): Promise<Blob> {
         socket.binaryType = "arraybuffer";
         const chunks: Uint8Array[] = [];
         let settled = false;
-        const timer = window.setTimeout(() => finish(new Error("tiempo")), 12000);
+        const timer = window.setTimeout(() => finish(new Error("tiempo")), 5000);
         const finish = (error?: Error) => {
           if (settled) return;
           settled = true;
@@ -120,7 +120,7 @@ export function synthesizeLorenzo(text: string): Promise<Blob> {
             reject(error);
             return;
           }
-          const blob = new Blob(chunks as BlobPart[], { type: "audio/mpeg" });
+          const blob = new Blob(chunks as BlobPart[], { type: "audio/wav" });
           if (blob.size < 500) reject(new Error("audio corto"));
           else resolve(blob);
         };
@@ -129,11 +129,11 @@ export function synthesizeLorenzo(text: string): Promise<Blob> {
           const now = new Date().toUTCString();
           socket.send(
             `X-Timestamp:${now}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
-              `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":false},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`,
+              `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":false},"outputFormat":"riff-24khz-16bit-mono-pcm"}}}}`,
           );
           const ssml =
-            `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="es-CL">` +
-            `<voice name="es-CL-LorenzoNeural"><prosody rate="-8%" pitch="+0Hz" volume="+0%">` +
+            `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="es-EC">` +
+            `<voice name="es-EC-AndreaNeural"><prosody rate="-12%" pitch="+0Hz" volume="+0%">` +
             `${escapeXml(line)}</prosody></voice></speak>`;
           socket.send(
             `X-RequestId:${id}\r\nContent-Type:application/ssml+xml\r\nX-Timestamp:${now}\r\nPath:ssml\r\n\r\n${ssml}`,

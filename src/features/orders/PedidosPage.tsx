@@ -231,8 +231,8 @@ function OrderCard({
     <article className="rounded-xl border border-border-subtle bg-surface p-4 text-sm">
       <div className="flex items-start justify-between gap-2">
         <p className="flex min-w-0 items-baseline gap-2">
-          <span className="font-display text-2xl font-black tabular-nums leading-none text-brand-600">
-            {dailyTicketNumber(order.order_code)}
+          <span className="font-display text-2xl font-black leading-none text-brand-600">
+            {order.table_number?.trim() ? `Mesa ${order.table_number.trim()}` : "Sin mesa"}
           </span>
           <span className="truncate text-xs text-foreground/45">{order.order_code}</span>
         </p>
@@ -485,14 +485,14 @@ export default function PedidosPage() {
   const activeOrders = orders.filter((o) =>
     (ACTIVE_STATUSES as readonly string[]).includes(o.status),
   );
-  const byKitchenOrder = (a: Order, b: Order) =>
+  const byArrival = (a: Order, b: Order) =>
     new Date(a.received_at).getTime() - new Date(b.received_at).getTime();
   const pendingOrders = activeOrders
     .filter((order) => !isOrderReady(order))
-    .sort(byKitchenOrder);
+    .sort(byArrival);
   const readyOrders = activeOrders
     .filter((order) => isOrderReady(order) && readyToday(order))
-    .sort(byKitchenOrder);
+    .sort(byArrival);
 
   function openAdd(order: Order) {
     setError(null);
