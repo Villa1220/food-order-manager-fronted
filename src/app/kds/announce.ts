@@ -1,5 +1,6 @@
 import { API_URL, readSession } from "@/lib/auth";
 import type { Order } from "@/features/orders/types";
+import { synthesizeLorenzo } from "@/app/kds/lorenzo";
 
 const VOICE_KEY = "kds-voice";
 const NUMBERS = [
@@ -138,6 +139,12 @@ function playBlob(blob: Blob): Promise<void> {
 }
 
 async function speakWithLorenzo(text: string): Promise<void> {
+  try {
+    await playBlob(await synthesizeLorenzo(text));
+    return;
+  } catch {
+    // Si esta pantalla no alcanza la voz, se pide al servidor.
+  }
   const token = readSession()?.token;
   const response = await fetch(`${API_URL}/api/kitchen/speak`, {
     method: "POST",
