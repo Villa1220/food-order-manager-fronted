@@ -82,10 +82,12 @@ function MesaField({
   order,
   onSaved,
   onError,
+  large = false,
 }: {
   order: Order;
   onSaved: (order: Order) => void;
   onError: (message: string) => void;
+  large?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [value, setValue] = useState(order.table_number ?? "");
@@ -110,25 +112,43 @@ function MesaField({
     }
   }
 
+  const input = (
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={(event) => setValue(event.target.value)}
+      onBlur={() => void save()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter") event.currentTarget.blur();
+      }}
+      name={large ? "mesa-titulo" : "mesa-pedido"}
+      inputMode="numeric"
+      enterKeyHint="done"
+      autoComplete="off"
+      placeholder={large ? "—" : "número"}
+      aria-label="Número de mesa"
+      style={large ? { width: `${Math.max(2, value.length || 1) + 0.4}ch` } : undefined}
+      className={
+        large
+          ? "min-w-[1.5ch] bg-transparent font-display text-2xl font-black leading-none text-brand-600 outline-none focus:rounded-md focus:bg-background focus:px-1"
+          : "w-16 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-foreground outline-none focus:border-brand-400 focus:bg-background"
+      }
+    />
+  );
+
+  if (large) {
+    return (
+      <label className="flex min-w-0 items-baseline gap-2">
+        <span className="font-display text-2xl font-black leading-none text-brand-600">Mesa</span>
+        {input}
+      </label>
+    );
+  }
+
   return (
     <label className="mt-1 flex items-center gap-2 text-foreground/60">
       <span>Mesa</span>
-      <input
-        ref={inputRef}
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onBlur={() => void save()}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur();
-        }}
-        name="mesa-pedido"
-        inputMode="numeric"
-        enterKeyHint="done"
-        autoComplete="off"
-        placeholder="número"
-        aria-label="Número de mesa"
-        className="w-16 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-sm text-foreground outline-none focus:border-brand-400 focus:bg-background"
-      />
+      {input}
       <span>· ${Number(order.subtotal).toFixed(2)}</span>
     </label>
   );
@@ -231,9 +251,7 @@ function OrderCard({
     <article className="rounded-xl border border-border-subtle bg-surface p-4 text-sm">
       <div className="flex items-start justify-between gap-2">
         <p className="flex min-w-0 items-baseline gap-2">
-          <span className="font-display text-2xl font-black leading-none text-brand-600">
-            {order.table_number?.trim() ? `Mesa ${order.table_number.trim()}` : "Sin mesa"}
-          </span>
+          <MesaField large order={order} onSaved={onTable} onError={onError} />
           <span className="truncate text-xs text-foreground/45">{order.order_code}</span>
         </p>
         <span className="flex shrink-0 items-center gap-1">
