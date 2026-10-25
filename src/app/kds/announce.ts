@@ -1,6 +1,5 @@
 import { API_URL, readSession } from "@/lib/auth";
 import type { Order } from "@/features/orders/types";
-import { synthesizeLorenzo } from "@/app/kds/lorenzo";
 
 const VOICE_KEY = "kds-voice";
 const NUMBERS = [
@@ -160,38 +159,41 @@ function playBlob(blob: Blob): Promise<void> {
   });
 }
 
-async function speakWithLorenzo(text: string): Promise<void> {
-  try {
-    await playBlob(await synthesizeLorenzo(text));
-    return;
-  } catch {
-    // Navegador no llega a Microsoft. El servidor manda la otra voz.
-  }
+function fetchKitchenAudio(text: string): Promise<Blob> {
   const token = readSession()?.token;
-  const response = await fetch(`${API_URL}/api/kitchen/speak`, {
+  return fetch(`${API_URL}/api/kitchen/speak`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify({ text }),
+  }).then(async (response) => {
+    if (!response.ok) throw new Error("sin voz");
+    const blob = await response.blob();
+    if (blob.size < 500) throw new Error("audio corto");
+    return blob;
   });
-  if (!response.ok) throw new Error("sin voz");
-  const blob = await response.blob();
-  if (blob.size < 500) throw new Error("audio corto");
-  await playBlob(blob);
+}
+
+function sentencesOf(text: string): string[] {
+  const parts = text.match(/[^.!?]+[.!?]?/g) ?? [text];
+  return parts.map((part) => part.trim()).filter((part) => part.length > 1);
 }
 
 export function speak(text: string) {
   const line = text.trim();
   if (!voiceEnabled() || !line) return;
-  playback = playback.then(async () => {
-    try {
-      await speakWithLorenzo(line);
-    } catch {
-      await speakWithBrowser(line);
-    }
-  });
+  for (const sentence of sentencesOf(line)) {
+    const pending = fetchKitchenAudio(sentence);
+    playback = playback.then(async () => {
+      try {
+        await playBlob(await pending);
+      } catch {
+        await speakWithBrowser(sentence);
+      }
+    });
+  }
 }
 
 /** El navegador solo suena después de un toque. Esta función debe llamarse desde un click. */
