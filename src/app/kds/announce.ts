@@ -1,20 +1,8 @@
 import { API_URL, readSession } from "@/lib/auth";
 import type { Order } from "@/features/orders/types";
+import { dishPhrase } from "./dish-speech";
 
 const VOICE_KEY = "kds-voice";
-const NUMBERS = [
-  "",
-  "un",
-  "dos",
-  "tres",
-  "cuatro",
-  "cinco",
-  "seis",
-  "siete",
-  "ocho",
-  "nueve",
-  "diez",
-];
 
 let playback: Promise<void> = Promise.resolve();
 let voiceOnMemory = false;
@@ -41,17 +29,8 @@ function kitchenAudio(): AudioContext | null {
   return audioCtx;
 }
 
-function feminine(name: string): boolean {
-  return /gaseosa|sopa|fritada|corvina|tilapia|porci[oó]n|costilla|menestra|parrillada|salchipapa/i.test(
-    name,
-  );
-}
-
 export function itemPhrase(quantity: number, name: string): string {
-  const count = Math.max(1, quantity);
-  if (count === 1) return feminine(name) ? `Una ${name}` : `Un ${name}`;
-  const word = NUMBERS[count] ?? String(count);
-  return `${word} ${name}`;
+  return dishPhrase(quantity, name);
 }
 
 function joinSpanish(parts: string[]): string {
