@@ -1,5 +1,5 @@
 import { API_URL, readSession } from "@/lib/auth";
-import type { Order } from "@/features/orders/types";
+import { itemTimerStart, pendingUnits, type Order } from "@/features/orders/types";
 import { dishPhrase } from "./dish-speech";
 
 const VOICE_KEY = "kds-voice";
@@ -54,6 +54,56 @@ export function announceNewOrder(order: Order) {
   const asked = askedFor(order.items);
   speak(`Pedido nuevo ${via}. ${asked}`);
   speak(`Repito el pedido. ${asked}`);
+}
+
+export const NUDGE_MINUTES = [10, 20, 30, 40, 50, 60] as const;
+
+export function crossedNudge(
+  minutes: number,
+  spoken: Set<number>,
+): (typeof NUDGE_MINUTES)[number] | null {
+  const levels = [...NUDGE_MINUTES].reverse();
+  for (const level of levels) {
+    if (minutes >= level && !spoken.has(level)) return level;
+  }
+  return null;
+}
+
+export function oldestPendingMinutes(order: Order, now = Date.now()): number {
+  let oldest = 0;
+  for (const item of order.items) {
+    if (pendingUnits(item) <= 0) continue;
+    const start = new Date(itemTimerStart(item, order)).getTime();
+    const minutes = Math.floor((now - start) / 60000);
+    if (minutes > oldest) oldest = minutes;
+  }
+  return oldest;
+}
+
+export function pendingDishes(
+  order: Order,
+  minMinutes: number,
+  now = Date.now(),
+): { name: string; phrase: string }[] {
+  const dishes: { name: string; phrase: string }[] = [];
+  for (const item of order.items) {
+    const left = pendingUnits(item);
+    if (left <= 0) continue;
+    const start = new Date(itemTimerStart(item, order)).getTime();
+    const minutes = Math.floor((now - start) / 60000);
+    if (minutes >= minMinutes) {
+      dishes.push({ name: item.name, phrase: itemPhrase(left, item.name) });
+    }
+  }
+  return dishes;
+}
+
+export function nudgeFallback(minutes: number, dishes: string[]): string {
+  const list = joinSpanish(dishes);
+  if (minutes >= 20) {
+    return `Qué fue con ${list}. Ya van ${minutes} minutos y los clientes están con hambre.`;
+  }
+  return `Chuta, ${list} lleva ${minutes} minutos. Ya toca moverse.`;
 }
 
 export function addedPhrase(
