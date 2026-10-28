@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Maximize2, Minimize2, Moon, Sun } from "lucide-react";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { clearSession, readSession } from "@/lib/auth";
 import { apiFetch } from "@/lib/api";
 import { getSocket } from "@/lib/socket";
@@ -22,12 +22,14 @@ import {
   announceNewOrder,
   crossedNudge,
   enableVoice,
+  kitchenEngine,
   NUDGE_MINUTES,
   nudgeFallback,
   oldestPendingMinutes,
   pendingDishes,
   snapshotItems,
   speak,
+  toggleKitchenEngine,
   voiceEnabled,
   type ItemSnapshot,
 } from "@/app/kds/announce";
@@ -123,6 +125,7 @@ function KdsBoard() {
   const [fullscreen, setFullscreen] = useState(false);
   const [light, setLight] = useState(false);
   const [voiceOn, setVoiceOn] = useState(false);
+  const [engine, setEngine] = useState<"1" | "2">("1");
   const [loaded, setLoaded] = useState(false);
   const [, forceTick] = useState(0);
   const ordersRef = useRef<Order[]>([]);
@@ -136,6 +139,7 @@ function KdsBoard() {
 
   useEffect(() => {
     setVoiceOn(voiceEnabled());
+    setEngine(kitchenEngine());
   }, []);
 
   useEffect(() => {
@@ -296,16 +300,6 @@ function KdsBoard() {
     return () => clearInterval(timer);
   }, []);
 
-  function toggleLight() {
-    const next = !light;
-    setLight(next);
-    try {
-      localStorage.setItem(KDS_THEME_KEY, next ? "light" : "dark");
-    } catch {
-      // el cambio aplica igual en esta sesión
-    }
-  }
-
   async function toggleFullscreen() {
     try {
       if (isFullscreen()) {
@@ -399,16 +393,22 @@ function KdsBoard() {
           </button>
           <button
             type="button"
-            onClick={toggleLight}
+            onClick={() => {
+              const next = toggleKitchenEngine();
+              setEngine(next);
+              if (voiceOn) speak(next === "2" ? "Voz dos." : "Voz uno.");
+            }}
             className={cn(
               "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 transition",
               headerBtn,
+              engine === "2" && "border-gold-400 text-gold-400",
             )}
-            aria-pressed={light}
-            title={light ? "Cambiar a fondo oscuro" : "Cambiar a fondo claro"}
+            aria-pressed={engine === "2"}
+            title="Cambiar entre la voz de la cocina y la voz de Azure"
           >
-            {light ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-            {light ? "Fondo oscuro" : "Fondo claro"}
+            <span className={engine === "1" ? "font-black" : "opacity-45"}>Voz 1</span>
+            <span aria-hidden="true">-</span>
+            <span className={engine === "2" ? "font-black" : "opacity-45"}>Voz 2</span>
           </button>
           <Link href="/panel" className="text-gold-500 hover:underline">
             Panel

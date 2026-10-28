@@ -3,6 +3,29 @@ import { itemTimerStart, pendingUnits, type Order } from "@/features/orders/type
 import { dishPhrase } from "./dish-speech";
 
 const VOICE_KEY = "kds-voice";
+const ENGINE_KEY = "kds-voice-engine";
+let engineMemory: "1" | "2" = "1";
+
+export function kitchenEngine(): "1" | "2" {
+  try {
+    const saved = localStorage.getItem(ENGINE_KEY);
+    if (saved === "1" || saved === "2") return saved;
+  } catch {
+    // La tele a veces no deja leer el almacenamiento.
+  }
+  return engineMemory;
+}
+
+export function toggleKitchenEngine(): "1" | "2" {
+  const next = kitchenEngine() === "1" ? "2" : "1";
+  engineMemory = next;
+  try {
+    localStorage.setItem(ENGINE_KEY, next);
+  } catch {
+    // Queda elegida durante esta visita.
+  }
+  return next;
+}
 
 let playback: Promise<void> = Promise.resolve();
 let voiceOnMemory = false;
@@ -196,7 +219,7 @@ function fetchKitchenAudio(text: string): Promise<Blob> {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, voice: kitchenEngine() }),
   }).then(async (response) => {
     if (!response.ok) throw new Error("sin voz");
     const blob = await response.blob();
