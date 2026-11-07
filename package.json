@@ -23,6 +23,7 @@
     "react-day-picker": "^10.0.2",
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.54.0",
+    "recharts": "^3.10.1",
     "socket.io-client": "^4.8.1",
     "sonner": "^2.0.8",
     "tailwind-merge": "^2.5.5",
