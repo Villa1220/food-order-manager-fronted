@@ -15,6 +15,13 @@ import { useSession } from "@/lib/useSession";
 
 type RankedDish = { name: string; units: number; orders: number };
 type RankedPerson = { name: string; role: string; orders: number };
+type MonthSales = {
+  month: string;
+  orders: number;
+  income: string;
+  efectivo: string;
+  transferencia: string;
+};
 
 type DashboardReport = {
   month: string;
@@ -29,6 +36,7 @@ type DashboardReport = {
   soups: RankedDish[];
   desserts: RankedDish[];
   staff: RankedPerson[];
+  byMonth: MonthSales[];
 };
 
 const MONTHS = [
@@ -198,6 +206,61 @@ export function Dashboard() {
               <p className="mt-1 font-display text-4xl font-black text-brand-700">{money(report.ticket)}</p>
             </article>
           </div>
+
+          <section className="mt-4 rounded-2xl border border-border-subtle bg-surface p-4">
+            <h2 className="font-display text-xl font-black text-brand-700">Ingresos por mes</h2>
+            <p className="mt-1 text-sm text-foreground/60">
+              Todos los meses atendidos, comparados. No cambia al elegir un mes arriba.
+            </p>
+            <div className="mt-3 h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={(report.byMonth ?? []).map((item) => ({
+                    name: monthLabel(item.month),
+                    efectivo: Number(item.efectivo),
+                    transferencia: Number(item.transferencia),
+                    orders: item.orders,
+                  }))}
+                  margin={{ top: 8, right: 8, left: 8, bottom: 0 }}
+                >
+                  <CartesianGrid vertical={false} stroke="#eadfce" />
+                  <XAxis dataKey="name" tick={{ fill: "#3d2b1f", fontSize: 12 }} />
+                  <YAxis tick={{ fill: "#7c6a58", fontSize: 12 }} />
+                  <Tooltip
+                    cursor={{ fill: "#fdf3ec" }}
+                    formatter={(value, name) => [
+                      money(String(value ?? 0)),
+                      name === "efectivo" ? "Efectivo" : "Transferencia",
+                    ]}
+                  />
+                  <Bar dataKey="efectivo" stackId="ingreso" fill="#d14a04" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="transferencia" stackId="ingreso" fill="#0f766e" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <table className="mt-3 w-full text-sm">
+              <thead className="text-left text-foreground/55">
+                <tr>
+                  <th className="py-1 font-medium">Mes</th>
+                  <th className="py-1 font-medium">Pedidos</th>
+                  <th className="py-1 font-medium">Efectivo</th>
+                  <th className="py-1 font-medium">Transferencia</th>
+                  <th className="py-1 font-medium">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(report.byMonth ?? []).map((item) => (
+                  <tr key={item.month} className="border-t border-border-subtle">
+                    <td className="py-2 capitalize">{monthLabel(item.month)}</td>
+                    <td className="py-2 tabular-nums">{item.orders}</td>
+                    <td className="py-2 tabular-nums">{money(item.efectivo)}</td>
+                    <td className="py-2 tabular-nums">{money(item.transferencia)}</td>
+                    <td className="py-2 font-semibold tabular-nums">{money(item.income)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-2">
             <ChartCard title="Platos más vendidos" rows={report.dishes} color="#d14a04" />
