@@ -251,23 +251,26 @@ function KdsBoard() {
     }
   }, []);
 
-  // Carga inicial + suscripción en tiempo real.
+  // El socket pinta el pedido al instante. Cada 30 s se vuelve a pedir la
+  // lista por si esa conexión se cayó, y también al perderla o al recuperarla.
   useEffect(() => {
     void loadOrders();
     const socket = getSocket();
     const onOrder = (order: Order) => {
       setOrders((prev) => upsertOrder(prev, order));
     };
+    const reload = () => void loadOrders();
     socket.on("order:new", onOrder);
     socket.on("order:status", onOrder);
-    socket.on("connect", () => void loadOrders()); // re-sincroniza tras reconexión
-    // En Vercel el socket no cruza hasta el HTTP del VPS. La pantalla de
-    // cocina igual se entera de un pedido tomado en el celular.
-    const poll = setInterval(() => void loadOrders(), 1500);
+    socket.on("connect", reload);
+    socket.on("disconnect", reload);
+    const poll = setInterval(reload, 30_000);
     return () => {
       clearInterval(poll);
       socket.off("order:new", onOrder);
       socket.off("order:status", onOrder);
+      socket.off("connect", reload);
+      socket.off("disconnect", reload);
     };
   }, [loadOrders]);
 
