@@ -39,9 +39,15 @@ declare global {
   }
 }
 
+function buttonWidth(container: HTMLElement): number {
+  const available = Math.floor(container.clientWidth);
+  return Math.max(200, Math.min(available, 400));
+}
+
 export function GoogleSignIn() {
   const router = useRouter();
   const { locale, t } = useLanguage();
+  const frameRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -49,13 +55,28 @@ export function GoogleSignIn() {
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
 
-    const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
+    let painted = 0;
+    const paint = () => {
+      const frame = frameRef.current;
+      const slot = buttonRef.current;
+      if (!window.google || !frame || !slot) return;
+      const width = buttonWidth(frame);
+      if (width === painted && slot.childElementCount > 0) return;
+      painted = width;
+      slot.innerHTML = "";
+      window.google.accounts.id.renderButton(slot, {
+        theme: "outline",
+        size: "large",
+        text: "continue_with",
+        locale: locale === "en" ? "en" : "es",
+        shape: "pill",
+        width,
+        logo_alignment: "left",
+      });
+    };
+
+    const start = () => {
       if (!window.google || !buttonRef.current) return;
-      buttonRef.current.innerHTML = "";
       window.google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
         callback: (response) => {
@@ -71,18 +92,22 @@ export function GoogleSignIn() {
             .finally(() => setBusy(false));
         },
       });
-      window.google.accounts.id.renderButton(buttonRef.current, {
-        theme: "outline",
-        size: "large",
-        text: "continue_with",
-        locale: locale === "en" ? "en" : "es",
-        shape: "pill",
-        width: 336,
-        logo_alignment: "left",
-      });
+      paint();
     };
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = start;
     document.body.appendChild(script);
+
+    const frame = frameRef.current;
+    const observer = new ResizeObserver(() => paint());
+    if (frame) observer.observe(frame);
+
     return () => {
+      observer.disconnect();
       script.remove();
     };
   }, [locale, router]);
@@ -97,11 +122,13 @@ export function GoogleSignIn() {
   }
 
   return (
-    <div className="flex w-full flex-col items-center gap-4">
-      <div
-        className={busy ? "pointer-events-none opacity-40" : undefined}
-        ref={buttonRef}
-      />
+    <div className="flex w-full min-w-0 flex-col items-stretch gap-4">
+      <div ref={frameRef} className="w-full min-w-0 overflow-hidden">
+        <div
+          className={busy ? "pointer-events-none opacity-40" : undefined}
+          ref={buttonRef}
+        />
+      </div>
       {busy ? (
         <p className="flex items-center gap-2 text-sm text-foreground/60">
           <Loader2 className="h-4 w-4 animate-spin text-brand-600" />

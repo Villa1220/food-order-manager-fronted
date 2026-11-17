@@ -49,7 +49,7 @@ export function LoginPage() {
           transition={{ duration: 0.35, ease: "easeOut" }}
           className="flex w-full max-w-md flex-col items-center"
         >
-          <div className="w-full rounded-[1.75rem] border border-border-subtle bg-surface p-8 md:p-10">
+          <div className="w-full overflow-hidden rounded-[1.75rem] border border-border-subtle bg-surface p-8 md:p-10">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-gold-600">
               {t.login.eyebrow}
             </p>
