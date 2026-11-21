@@ -192,7 +192,7 @@ const NUDGE_FALLBACK: Record<(typeof NUDGE_MINUTES)[number], (list: string) => s
   40: (list) => `Cuarenta minutos con ${list}. Eso ya no es un aperitivo, es una novela.`,
   50: (list) => `${list} cumple cincuenta minutos. El hambre ya pidió la cuenta del tiempo.`,
   60: (list) => `Una hora con ${list}. Si el plato tuviera patas, ya se habría ido solo.`,
-  70: (list) => `Setenta minutos y ${list} sigue ahí. Último jalón: a despachar eso ya.`,
+  70: (list) => `Setenta minutos y ${list} sigue en el tablero. Sáquenlo ya, que la mesa no come del reloj.`,
 };
 
 export function nudgeFallback(minutes: number, dishes: string[]): string {
