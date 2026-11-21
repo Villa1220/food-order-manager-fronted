@@ -77,10 +77,15 @@ export function isOrderFinished(order: Order): boolean {
 }
 
 export function tableVoice(order: Order): string {
-  if (order.channel === "whatsapp") return "el pedido de WhatsApp";
+  if (order.channel === "whatsapp") return "en el pedido de WhatsApp";
   const table = order.table_number?.trim() ?? "";
-  if (!table || table === "0" || table.toLowerCase() === "llevar") return "el pedido para llevar";
-  return `la mesa ${table}`;
+  if (!table || table === "0" || table.toLowerCase() === "llevar") return "en el pedido para llevar";
+  return `en la mesa ${table}`;
+}
+
+export function finishedOpening(place: string, minutes: number): string {
+  const where = place.trim().replace(/^en\s+/i, "");
+  return `En ${where} nos demoramos ${minutes} minutos.`;
 }
 
 export function finishedMinutes(order: Order): number {
@@ -96,16 +101,16 @@ export function finishedMinutes(order: Order): number {
 
 const CHEER_FALLBACK = [
   (place: string, minutes: number) =>
-    `${place} salió en ${minutes} minutos. Si el apuro tuviera premio, esta tanda se lo lleva.`,
+    `${finishedOpening(place, minutes)} Si el apuro tuviera premio, esta tanda se lo lleva.`,
   (place: string, minutes: number) =>
-    `${place} se quedó ${minutes} minutos. El plato no se escapó, pero miró la puerta.`,
+    `${finishedOpening(place, minutes)} El plato no se escapó, pero miró la puerta.`,
   (place: string, minutes: number) =>
-    `${minutes} minutos para ${place}. La mesa ya podía contar esa espera como entrada.`,
+    `${finishedOpening(place, minutes)} La espera ya podía cobrarse como entrada.`,
 ];
 
 export function finishedFallback(place: string, minutes: number, slow: boolean): string {
   if (!slow) {
-    return `${place} lista en ${minutes} minutos. Bien ahí, cocina, así da gusto.`;
+    return `${finishedOpening(place, minutes)} Bien ahí, cocina, así da gusto.`;
   }
   return CHEER_FALLBACK[minutes % CHEER_FALLBACK.length](place, minutes);
 }
