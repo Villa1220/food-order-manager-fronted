@@ -19,9 +19,11 @@ import { cn } from "@/lib/utils";
 import {
   addedItems,
   addedPhrase,
+  announceFinished,
   announceNewOrder,
   crossedNudge,
   enableVoice,
+  isOrderFinished,
   kitchenEngine,
   NUDGE_MINUTES,
   nudgeFallback,
@@ -132,7 +134,7 @@ function KdsBoard() {
   const voiceOnRef = useRef(false);
   const seenRef = useRef<{
     primed: boolean;
-    orders: Map<number, { items: ItemSnapshot; nudges: Set<number> }>;
+    orders: Map<number, { items: ItemSnapshot; nudges: Set<number>; finished: boolean }>;
   }>({ primed: false, orders: new Map() });
   ordersRef.current = orders;
   voiceOnRef.current = voiceOn;
@@ -152,7 +154,11 @@ function KdsBoard() {
         for (const level of NUDGE_MINUTES) {
           if (minutes >= level) nudges.add(level);
         }
-        seen.orders.set(order.id, { items: snapshotItems(order), nudges });
+        seen.orders.set(order.id, {
+          items: snapshotItems(order),
+          nudges,
+          finished: isOrderFinished(order),
+        });
       }
       seen.primed = true;
       return;
@@ -169,6 +175,7 @@ function KdsBoard() {
         seen.orders.set(order.id, {
           items: snapshotItems(order),
           nudges: previous?.nudges ?? new Set(),
+          finished: isOrderFinished(order),
         });
       }
       return;
@@ -178,12 +185,22 @@ function KdsBoard() {
       const previous = seen.orders.get(order.id);
       if (!previous) {
         announceNewOrder(order);
-        seen.orders.set(order.id, { items: snapshotItems(order), nudges: new Set() });
+        seen.orders.set(order.id, {
+          items: snapshotItems(order),
+          nudges: new Set(),
+          finished: isOrderFinished(order),
+        });
         continue;
       }
+      const done = isOrderFinished(order);
+      if (done && !previous.finished) announceFinished(order);
       const added = addedItems(previous.items, order);
       if (added.length > 0) speak(addedPhrase(added));
-      seen.orders.set(order.id, { items: snapshotItems(order), nudges: previous.nudges });
+      seen.orders.set(order.id, {
+        items: snapshotItems(order),
+        nudges: previous.nudges,
+        finished: done ? true : false,
+      });
     }
   }, [loaded, orders, voiceOn]);
 
