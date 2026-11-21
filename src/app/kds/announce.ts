@@ -72,6 +72,65 @@ function askedFor(items: { quantity: number; name: string; notes?: string | null
   )}.`;
 }
 
+export function isOrderFinished(order: Order): boolean {
+  return order.items.length > 0 && order.items.every((item) => pendingUnits(item) <= 0);
+}
+
+export function tableVoice(order: Order): string {
+  if (order.channel === "whatsapp") return "el pedido de WhatsApp";
+  const table = order.table_number?.trim() ?? "";
+  if (!table || table === "0" || table.toLowerCase() === "llevar") return "el pedido para llevar";
+  return `la mesa ${table}`;
+}
+
+export function finishedMinutes(order: Order): number {
+  const start = new Date(order.received_at).getTime();
+  const readyMarks = order.items
+    .map((item) => item.ready_at)
+    .filter((value): value is string => Boolean(value))
+    .map((value) => new Date(value).getTime());
+  const readyAt = order.ready_at ? new Date(order.ready_at).getTime() : 0;
+  const end = Math.max(readyAt, ...readyMarks, 0) || Date.now();
+  return Math.max(1, Math.round((end - start) / 60000));
+}
+
+const CHEER_FALLBACK = [
+  (place: string, minutes: number) =>
+    `${place} salió en ${minutes} minutos. Si el apuro tuviera premio, esta tanda se lo lleva.`,
+  (place: string, minutes: number) =>
+    `${place} se quedó ${minutes} minutos. El plato no se escapó, pero miró la puerta.`,
+  (place: string, minutes: number) =>
+    `${minutes} minutos para ${place}. La mesa ya podía contar esa espera como entrada.`,
+];
+
+export function finishedFallback(place: string, minutes: number, slow: boolean): string {
+  if (!slow) {
+    return `${place} lista en ${minutes} minutos. Bien ahí, cocina, así da gusto.`;
+  }
+  return CHEER_FALLBACK[minutes % CHEER_FALLBACK.length](place, minutes);
+}
+
+export function announceFinished(order: Order) {
+  const place = tableVoice(order);
+  const minutes = finishedMinutes(order);
+  const slow = minutes >= 20;
+  void fetch(`${API_URL}/api/kitchen/cheer`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(readSession()?.token ? { Authorization: `Bearer ${readSession()?.token}` } : {}),
+    },
+    body: JSON.stringify({ place, minutes, mood: slow ? "risa" : "aliento" }),
+  })
+    .then(async (response) => {
+      if (!response.ok) throw new Error("sin frase");
+      const data = (await response.json()) as { phrase?: string };
+      if (!data.phrase) throw new Error("sin frase");
+      speak(data.phrase);
+    })
+    .catch(() => speak(finishedFallback(place, minutes, slow)));
+}
+
 export function announceNewOrder(order: Order) {
   const via = order.channel === "whatsapp" ? "por WhatsApp" : "en mesa";
   const asked = askedFor(order.items);
