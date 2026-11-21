@@ -5,7 +5,11 @@ import { Banknote, FileDown, Minus, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import { downloadReceipt, type ReceiptPayment } from "@/features/payments/receipt";
+import {
+  downloadReceipt,
+  prepareReceiptFolder,
+  type ReceiptPayment,
+} from "@/features/payments/receipt";
 
 type OpenOrder = {
   id: number;
@@ -227,6 +231,7 @@ export default function PagosPage() {
     setPaying(true);
     setError(null);
     try {
+      await prepareReceiptFolder();
       const saved = await apiFetch<{ payment: ReceiptPayment }>("/api/payments", {
         method: "POST",
         body: JSON.stringify({
@@ -239,9 +244,12 @@ export default function PagosPage() {
           container_count: containers,
         }),
       });
-      downloadReceipt(saved.payment);
+      const place = await downloadReceipt(saved.payment);
       toast.success("Cuenta cobrada", {
-        description: `${saved.payment.receipt_number} · ${money(saved.payment.amount)}`,
+        description:
+          place === "documentos"
+            ? `${saved.payment.receipt_number} · ${money(saved.payment.amount)} · Documentos / La Ruta del Sabor`
+            : `${saved.payment.receipt_number} · ${money(saved.payment.amount)} · Descargas`,
       });
       const open = await loadOrders();
       if (open.some((order) => order.id === detail.order.id)) {
@@ -257,13 +265,18 @@ export default function PagosPage() {
     }
   }
 
-  function reprint(receipt: Receipt) {
+  async function reprint(receipt: Receipt) {
     if (!detail) return;
-    downloadReceipt({
+    await prepareReceiptFolder();
+    const place = await downloadReceipt({
       ...receipt,
       order_code: detail.order.order_code,
       table_number: detail.order.table_number,
     });
+    toast.success(
+      place === "documentos" ? "Recibo guardado en Documentos" : "Recibo descargado",
+      { description: receipt.receipt_number },
+    );
   }
 
   return (
@@ -271,8 +284,9 @@ export default function PagosPage() {
       <h1 className="font-display text-4xl font-black italic text-brand-600">Pagos</h1>
       <p className="mt-1 max-w-xl text-sm text-foreground/60">
         Separa la cuenta por platos, suma contenedores para llevar si hace falta
-        y cobra en efectivo o transferencia. El recibo se descarga en PDF. Los
-        precios ya incluyen IVA.
+        y cobra en efectivo o transferencia. En la computadora el recibo se
+        guarda en Documentos, dentro de La Ruta del Sabor y de la carpeta del
+        día. Los precios ya incluyen IVA.
       </p>
 
       {error ? (
@@ -562,7 +576,7 @@ export default function PagosPage() {
                           </span>
                           <button
                             type="button"
-                            onClick={() => reprint(receipt)}
+                            onClick={() => void reprint(receipt)}
                             className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700"
                           >
                             <FileDown className="h-3.5 w-3.5" />
