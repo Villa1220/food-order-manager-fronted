@@ -79,7 +79,7 @@ export function announceNewOrder(order: Order) {
   speak(`Repito el pedido. ${asked}`);
 }
 
-export const NUDGE_MINUTES = [10, 20, 30, 40, 50, 60] as const;
+export const NUDGE_MINUTES = [10, 20, 30, 40, 50, 60, 70] as const;
 
 export function crossedNudge(
   minutes: number,
@@ -121,12 +121,20 @@ export function pendingDishes(
   return dishes;
 }
 
+const NUDGE_FALLBACK: Record<(typeof NUDGE_MINUTES)[number], (list: string) => string> = {
+  10: (list) => `${list} ya va en diez minutos. El fogón no adivina solo.`,
+  20: (list) => `A ver, cocina: ${list} sigue esperando y ya son veinte minutos.`,
+  30: (list) => `${list} lleva media hora en el tablero. La mesa ya estiró el cuello.`,
+  40: (list) => `Cuarenta minutos con ${list}. Eso ya no es un aperitivo, es una novela.`,
+  50: (list) => `${list} cumple cincuenta minutos. El hambre ya pidió la cuenta del tiempo.`,
+  60: (list) => `Una hora con ${list}. Si el plato tuviera patas, ya se habría ido solo.`,
+  70: (list) => `Setenta minutos y ${list} sigue ahí. Último jalón: a despachar eso ya.`,
+};
+
 export function nudgeFallback(minutes: number, dishes: string[]): string {
   const list = joinSpanish(dishes);
-  if (minutes >= 20) {
-    return `Qué fue con ${list}. Ya van ${minutes} minutos y los clientes están con hambre.`;
-  }
-  return `Chuta, ${list} lleva ${minutes} minutos. Ya toca moverse.`;
+  const line = NUDGE_FALLBACK[minutes as (typeof NUDGE_MINUTES)[number]];
+  return line ? line(list) : `${list} ya va en ${minutes} minutos. A despachar.`;
 }
 
 export function addedPhrase(
