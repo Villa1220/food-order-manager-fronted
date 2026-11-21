@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 import { es } from "date-fns/locale";
 import "react-day-picker/style.css";
@@ -19,6 +19,8 @@ type ReportOrder = {
   items_label: string;
   payment_label: string;
 };
+
+const PAGE_SIZES = [5, 10, 15, 20, 25] as const;
 
 const STATUS_LABEL: Record<string, string> = {
   recibido: "Pendiente",
@@ -81,6 +83,8 @@ export default function ReportesPage() {
   const [report, setReport] = useState<DailyReport | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [whatsappOk, setWhatsappOk] = useState<boolean | null>(null);
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(10);
+  const [page, setPage] = useState(1);
 
   async function search() {
     setLoading(true);
@@ -91,6 +95,7 @@ export default function ReportesPage() {
         `/api/reports?from=${bounds.from}&to=${bounds.to}`,
       );
       setOrders(data.orders);
+      setPage(1);
       setSearched(`${bounds.from}:${bounds.to}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos");
@@ -123,12 +128,30 @@ export default function ReportesPage() {
         `/api/reports?from=${bounds.from}&to=${bounds.to}`,
       );
       setOrders(list.orders);
+      setPage(1);
       setSearched(`${bounds.from}:${bounds.to}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo generar el reporte");
     } finally {
       setGenerating(false);
     }
+  }
+
+  const total = orders?.length ?? 0;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const current = Math.min(page, pages);
+  const fromRow = total === 0 ? 0 : (current - 1) * pageSize + 1;
+  const toRow = Math.min(current * pageSize, total);
+  const visibleOrders = useMemo(() => {
+    if (!orders) return [];
+    const start = (current - 1) * pageSize;
+    return orders.slice(start, start + pageSize);
+  }, [orders, current, pageSize]);
+
+  function changePageSize(next: number) {
+    if (!PAGE_SIZES.includes(next as (typeof PAGE_SIZES)[number])) return;
+    setPageSize(next as (typeof PAGE_SIZES)[number]);
+    setPage(1);
   }
 
   return (
@@ -190,7 +213,48 @@ export default function ReportesPage() {
               Ese día no tiene pedidos.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-border-subtle bg-surface">
+            <div className="overflow-hidden rounded-2xl border border-border-subtle bg-surface">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
+                <p className="text-xs text-foreground/55">
+                  {fromRow}–{toRow} de {total}
+                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <label className="flex items-center gap-2 text-xs text-foreground/55">
+                    Por página
+                    <select
+                      value={pageSize}
+                      onChange={(event) => changePageSize(Number(event.target.value))}
+                      className="rounded-lg border border-border-subtle bg-background px-2 py-1 text-sm text-foreground"
+                    >
+                      {PAGE_SIZES.map((size) => (
+                        <option key={size} value={size}>
+                          {size}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setPage(current - 1)}
+                    disabled={current <= 1}
+                    className="rounded-lg border border-border-subtle px-3 py-1 text-xs font-semibold disabled:opacity-40"
+                  >
+                    Anterior
+                  </button>
+                  <span className="text-xs text-foreground/55">
+                    {current} / {pages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPage(current + 1)}
+                    disabled={current >= pages}
+                    className="rounded-lg border border-border-subtle px-3 py-1 text-xs font-semibold disabled:opacity-40"
+                  >
+                    Siguiente
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead className="border-b border-border-subtle text-xs uppercase tracking-wide text-foreground/45">
                   <tr>
@@ -204,7 +268,7 @@ export default function ReportesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => (
+                  {visibleOrders.map((order) => (
                     <tr key={order.id} className="border-b border-border-subtle last:border-0">
                       <td className="px-4 py-3 font-display text-xl font-black text-brand-600">
                         {dailyTicketNumber(order.order_code)}
@@ -229,11 +293,7 @@ export default function ReportesPage() {
                   ))}
                 </tbody>
               </table>
-              {searched ? (
-                <p className="px-4 py-3 text-xs text-foreground/45">
-                  {orders.length} {orders.length === 1 ? "pedido" : "pedidos"}
-                </p>
-              ) : null}
+              </div>
             </div>
           )}
         </section>
